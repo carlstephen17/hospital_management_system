@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import CreateModal from "../homeModals/CreateModal";
 
 const styles = {
   wrapper: {
@@ -161,27 +162,10 @@ const styles = {
   },
 };
 
-const pill = {
-  display: "inline-block",
-  padding: "3px 10px",
-  borderRadius: "999px",
-  fontSize: "11px",
-  fontWeight: "600",
-};
-
-function StatusBadge({ value, styleMap }) {
-  const s =
-    styleMap[value] || {
-      background: "#f1f5f9",
-      color: "#64748b",
-      border: "1px solid #e2e8f0",
-    };
-
-  return <span style={{ ...pill, ...s }}>{value || "—"}</span>;
-}
-
 function UNF({
   patients,
+  setPatients,
+  fetchPatients,
   doctors,
   appointments,
   bills,
@@ -193,8 +177,27 @@ function UNF({
   handleDelete,
   handleDeleteAll,
 }) {
+  const [openCreate, setOpenCreate] = useState(false);
+
+  const handleCreated = async () => {
+    setOpenCreate(false);
+
+    if (fetchPatients && setPatients) {
+      const data = await fetchPatients();
+      setPatients(data);
+    }
+  };
+
   return (
     <div style={styles.wrapper}>
+
+      {openCreate && (
+        <CreateModal
+          onClose={() => setOpenCreate(false)}
+          onCreated={handleCreated}
+        />
+      )}
+
       <div style={styles.header}>
         <div style={styles.headerLeft}>
           <div style={styles.logoCircle}>H+</div>
@@ -208,10 +211,12 @@ function UNF({
           <button style={styles.btnSecondary} onClick={() => navigate("/reports")}>
             📊 Reports
           </button>
+
           <button style={styles.btnDanger} onClick={handleDeleteAll}>
             🗑️ Delete All
           </button>
-          <button style={styles.btnPrimary} onClick={() => navigate("/create")}>
+
+          <button style={styles.btnPrimary} onClick={() => setOpenCreate(true)}>
             ➕ Add Patient
           </button>
         </div>
@@ -221,74 +226,64 @@ function UNF({
         <table style={styles.table}>
           <thead style={styles.thead}>
             <tr>
-              {[
-                "Patient ID",
-                "Patient Name",
-                "Phone",
-                "Gender",
-                "Address",
-                "Condition",
-                "Status",
-                "Doctor ID",
-                "Doctor",
-                "Specialty",
-                "Department",
-                "Location",
-                "Schedule",
-                "Treatment",
-                "Bill",
-                "Actions",
-              ].map((h) => (
-                <th key={h} style={styles.th}>
-                  {h}
-                </th>
-              ))}
+              <th style={styles.th}>Patient ID</th>
+              <th style={styles.th}>Patient Name</th>
+              <th style={styles.th}>Phone</th>
+              <th style={styles.th}>Gender</th>
+              <th style={styles.th}>Address</th>
+              <th style={styles.th}>Condition</th>
+              <th style={styles.th}>Status</th>
+              <th style={styles.th}>Doctor ID</th>
+              <th style={styles.th}>Doctor</th>
+              <th style={styles.th}>Specialty</th>
+              <th style={styles.th}>Department</th>
+              <th style={styles.th}>Location</th>
+              <th style={styles.th}>Schedule</th>
+              <th style={styles.th}>Treatment</th>
+              <th style={styles.th}>Bill</th>
+              <th style={styles.th}>Actions</th>
             </tr>
           </thead>
 
           <tbody>
-            {patients.length === 0 ? (
+            {patients?.length === 0 ? (
               <tr>
-                <td colSpan={14} style={styles.emptyRow}>
+                <td colSpan={16} style={styles.emptyRow}>
                   No patient records found
                 </td>
               </tr>
             ) : (
-              patients.map((p) => {
-                const doctor = getDoctorForPatient(p.patient_id) || {};
-                const department = departments.find(
+              patients?.map((p) => {
+                const doctor = getDoctorForPatient?.(p.patient_id) || {};
+                const department = departments?.find(
                   (d) => String(d.department_id) === String(doctor.department_id)
                 );
 
-                const appointment = appointments.find(
+                const appointment = appointments?.find(
                   (a) => String(a.patient_id) === String(p.patient_id)
                 );
 
-                const patientTreats = patientTreatments.filter(
+                const patientTreats = patientTreatments?.filter(
                   (pt) => String(pt.patient_id) === String(p.patient_id)
                 );
 
                 const treatmentNames = patientTreats
-                  .map((pt) => {
-                    const t = treatments.find(
+                  ?.map((pt) => {
+                    const t = treatments?.find(
                       (x) => String(x.treatment_id) === String(pt.treatment_id)
                     );
                     return t ? t.treatment_name : "Unknown";
                   })
                   .join(", ");
 
-                const patientBills = bills.filter(
+                const patientBills = bills?.filter(
                   (b) => String(b.patient_id) === String(p.patient_id)
                 );
 
-                const totalCost = patientBills.reduce(
+                const totalCost = patientBills?.reduce(
                   (sum, b) => sum + Number(b.amount || 0),
                   0
                 );
-
-                const billStatus = patientBills.length
-                  ? patientBills[0].status
-                  : "None";
 
                 return (
                   <tr key={p.patient_id}>
@@ -298,10 +293,7 @@ function UNF({
                     <td style={styles.td}>{p.gender}</td>
                     <td style={styles.td}>{p.address}</td>
                     <td style={styles.td}>{p.condition}</td>
-
-                    <td style={styles.td}>
-                      <StatusBadge value={p.status} styleMap={{}} />
-                    </td>
+                    <td style={styles.td}>{p.status}</td>
 
                     <td style={styles.td}>{doctor.doctor_id || "—"}</td>
                     <td style={styles.td}>{doctor.doctor_name || "—"}</td>
@@ -316,67 +308,24 @@ function UNF({
                     </td>
 
                     <td style={styles.td}>
-                      <span
-                        style={{
-                          background: "#eff6ff",
-                          padding: "2px 6px",
-                          borderRadius: "5px",
-                          border: "1px solid #bfdbfe",
-                          display: "inline-block",
-                          fontSize: "11px",
-                          color: "#1a56db",
-                          fontWeight: "500",
-                          maxWidth: "110px",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {appointment?.appointment_date || "—"}
-                      </span>
+                      {appointment?.appointment_date || "—"}
                     </td>
 
-                    <td style={styles.td}>
-                      <div style={{ lineHeight: "1.3" }}>
-                        <div>{treatmentNames || "—"}</div>
-                        {totalCost > 0 && (
-                          <div
-                            style={{
-                              marginTop: "3px",
-                              fontSize: "11px",
-                              fontWeight: "600",
-                              color: "#15803d",
-                            }}
-                          >
-                            ₱{totalCost.toFixed(0)}
-                          </div>
-                        )}
-                      </div>
-                    </td>
+                    <td style={styles.td}>{treatmentNames || "—"}</td>
 
                     <td style={styles.td}>
-                      <StatusBadge value={billStatus} styleMap={{}} />
+                      ₱{totalCost?.toFixed(0) || 0}
                     </td>
 
                     <td style={styles.td}>
                       <div style={styles.actionGroup}>
-                        <button
-                          style={styles.btnRead}
-                          onClick={() => navigate(`/read/${p.patient_id}`)}
-                        >
-                          👁 View
-                        </button>
-                        <button
-                          style={styles.btnEdit}
-                          onClick={() => navigate(`/edit/${p.patient_id}`)}
-                        >
-                          ✏️ Edit
-                        </button>
+                        <button style={styles.btnRead}>View</button>
+                        <button style={styles.btnEdit}>Edit</button>
                         <button
                           style={styles.btnDelete}
                           onClick={() => handleDelete(p.patient_id)}
                         >
-                          🗑 Del
+                          Delete
                         </button>
                       </div>
                     </td>

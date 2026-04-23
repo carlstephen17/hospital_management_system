@@ -4,7 +4,9 @@ import { useNavigate } from "react-router-dom";
 
 function CreateBills() {
   const [patientName, setPatientName] = useState("");
-  const [billStatus, setBillStatus] = useState("Unpaid");
+  const [amount, setAmount] = useState("");
+  const [billDate, setBillDate] = useState(new Date().toISOString().split("T")[0]);
+  const [billStatus, setBillStatus] = useState("unpaid");
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
@@ -19,10 +21,7 @@ function CreateBills() {
         }),
       });
 
-      if (!patientRes.ok) {
-        throw new Error("Failed to create patient");
-      }
-
+      if (!patientRes.ok) throw new Error("Failed to create patient");
       const patientData = await patientRes.json();
 
       const billRes = await fetch(`${URL}/api/bills`, {
@@ -30,26 +29,28 @@ function CreateBills() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patient_id: patientData.patient_id,
+          patient_name: patientName,
+          amount: parseFloat(amount) || 0,
+          bill_date: billDate,
           status: billStatus,
         }),
       });
 
-      if (!billRes.ok) {
-        throw new Error("Failed to create bill");
-      }
+      if (!billRes.ok) throw new Error("Failed to create bill");
 
       alert("Bill created successfully!");
-      setPatientName("");
-      setBillStatus("Unpaid");
+      navigate("/bills");
     } catch (err) {
       console.error(err);
-      alert("Something went wrong");
+      alert("Error: " + err.message);
     }
   }
 
   return (
-    <div>
-      <form onSubmit={handleSubmit}>
+    <div style={{ padding: "20px" }}>
+      <h2>Create New Bill Record</h2>
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px", maxWidth: "400px" }}>
+        <label>Patient Name</label>
         <input
           type="text"
           placeholder="Enter Patient Name"
@@ -58,17 +59,40 @@ function CreateBills() {
           required
         />
 
+        <label>Amount (₱)</label>
+        <input
+          type="number"
+          placeholder="0.00"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          required
+        />
+
+        <label>Bill Date</label>
+        <input
+          type="date"
+          value={billDate}
+          onChange={(e) => setBillDate(e.target.value)}
+          required
+        />
+
+        <label>Status</label>
         <select
           value={billStatus}
           onChange={(e) => setBillStatus(e.target.value)}
         >
-          <option value="Unpaid">Unpaid</option>
-          <option value="Paid">Paid</option>
+          <option value="unpaid">Unpaid</option>
+          <option value="paid">Paid</option>
         </select>
 
-        <button type="button" onclick={navigate("/")}>
-          Create
-        </button>
+        <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+          <button type="submit" style={{ background: "#1a56db", color: "#fff", padding: "8px 16px", border: "none", borderRadius: "4px", cursor: "pointer" }}>
+            Create Bill
+          </button>
+          <button type="button" onClick={() => navigate("/bills")} style={{ padding: "8px 16px", cursor: "pointer" }}>
+            Cancel
+          </button>
+        </div>
       </form>
     </div>
   );

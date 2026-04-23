@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./components/Home";
-import Create from "./components/Create";
 import Read from "./components/Read";
 import Reports from "./components/Reports";
 import NF1 from "./normalization/NF1";
@@ -16,7 +15,6 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/nf1" element={<NF1 />} />
-        <Route path="/create" element={<Create />} />
         <Route path="/read/:id" element={<Read />} />
         <Route path="/edit/:id" element={<Edit />} />
         <Route path="/bills" element={<Bills />} />
@@ -30,3 +28,4 @@ function App() {
 }
 
 export default App;
+

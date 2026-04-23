@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { URL } from "../API";
 
@@ -10,82 +10,128 @@ function EditBills() {
   const [amount, setAmount] = useState("");
   const [billDate, setBillDate] = useState("");
   const [billStatus, setBillStatus] = useState("unpaid");
+  const [loading, setLoading] = useState(true);
+
+  const fetchBill = useCallback(async () => {
+    if (!billId || billId === "null" || billId === "undefined") {
+      alert("No bill record found to edit. Please create a bill first.");
+      navigate("/bills");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await fetch(`${URL}/api/bills/${billId}`);
+      
+      if (!res.ok) {
+        throw new Error("Bill not found in database");
+      }
+
+      const data = await res.json();
+
+      setPatientName(data?.patient_name || "");
+      setAmount(data?.amount || "");
+      setBillDate(data?.bill_date ? data.bill_date.split("T")[0] : "");
+      setBillStatus(data?.status || "unpaid");
+    } catch (err) {
+      console.error(err);
+      alert("Error: " + err.message);
+      navigate("/bills");
+    } finally {
+      setLoading(false);
+    }
+  }, [billId, navigate]);
 
   useEffect(() => {
     fetchBill();
-  }, [billId]);
-
-  async function fetchBill() {
-    try {
-      const res = await fetch(`${URL}/api/bills/${billId}`);
-      const data = await res.json();
-
-      const result = Array.isArray(data) ? data[0] : data;
-
-      setPatientName(result?.patient_name || "");
-      setAmount(result?.amount || "");
-      setBillDate(result?.bill_date || "");
-      setBillStatus(result?.status || "unpaid");
-    } catch (err) {
-      console.error(err);
-    }
-  }
+  }, [fetchBill]);
 
   async function handleEdit(e) {
     e.preventDefault();
-
     try {
-      await fetch(`${URL}/api/bills/full/${billId}`, {
+      const res = await fetch(`${URL}/api/bills/${billId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patient_name: patientName,
-          amount,
+          amount: parseFloat(amount),
           bill_date: billDate,
-          status: billStatus,
+          status: billStatus, 
         }),
       });
 
-      navigate("/bills");
+      if (!res.ok) throw new Error("Update failed");
+
+      alert("Bill updated successfully!");
+      navigate("/bills"); 
     } catch (err) {
-      console.error(err);
-      alert("Update failed");
+      alert("Update failed: " + err.message);
     }
   }
 
+  if (loading) return <div style={{ padding: "20px" }}>Loading Bill Details...</div>;
+
   return (
-    <form onSubmit={handleEdit}>
-      <h2>Edit Full Record</h2>
+    <div style={{ padding: "20px", fontFamily: "sans-serif" }}>
+      <button onClick={() => navigate("/bills")}>← Back to Bills</button>
+      <form onSubmit={handleEdit} style={{ marginTop: "20px" }}>
+        <h2>Edit Bill #{billId}</h2>
+        
+        <div style={{ display: "flex", flexDirection: "column", gap: "15px", maxWidth: "400px" }}>
+          <label>
+            Patient Name:
+            <input 
+              style={{ width: "100%", padding: "8px" }}
+              value={patientName} 
+              onChange={(e) => setPatientName(e.target.value)} 
+              required 
+            />
+          </label>
 
-      <input
-        value={patientName}
-        onChange={(e) => setPatientName(e.target.value)}
-        placeholder="Patient Name"
-      />
+          <label>
+            Amount (₱):
+            <input 
+              style={{ width: "100%", padding: "8px" }}
+              value={amount} 
+              type="number" 
+              step="0.01"
+              onChange={(e) => setAmount(e.target.value)} 
+              required 
+            />
+          </label>
 
-      <input
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-        placeholder="Amount"
-        type="number"
-      />
+          <label>
+            Bill Date:
+            <input 
+              style={{ width: "100%", padding: "8px" }}
+              value={billDate} 
+              type="date" 
+              onChange={(e) => setBillDate(e.target.value)} 
+              required 
+            />
+          </label>
 
-      <input
-        value={billDate}
-        onChange={(e) => setBillDate(e.target.value)}
-        type="date"
-      />
+          <label>
+            Payment Status:
+            <select 
+              style={{ width: "100%", padding: "8px" }}
+              value={billStatus} 
+              onChange={(e) => setBillStatus(e.target.value)}
+            >
+              <option value="paid">Paid</option>
+              <option value="unpaid">Unpaid</option>
+            </select>
+          </label>
 
-      <select
-        value={billStatus}
-        onChange={(e) => setBillStatus(e.target.value)}
-      >
-        <option value="paid">Paid</option>
-        <option value="unpaid">Unpaid</option>
-      </select>
-
-      <button type="submit">Update Everything</button>
-    </form>
+          <button 
+            type="submit" 
+            style={{ padding: "10px", background: "#1a56db", color: "white", border: "none", borderRadius: "4px", cursor: "pointer" }}
+          >
+            Update Everything
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 

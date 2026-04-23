@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 function Bills() {
   const [difference, setDifference] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -12,101 +13,60 @@ function Bills() {
 
   async function fetchBills() {
     try {
+      setLoading(true);
       const response = await fetch(`${URL}/api/reports/difference`);
+      if (!response.ok) throw new Error("Failed to fetch bills");
       const data = await response.json();
-      setDifference(data);
+      setDifference(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   }
 
-  async function handleDelete(billId) {
-    if (!billId) {
-      alert("No bill exists to delete");
-      return;
-    }
-
-    try {
-      const response = await fetch(`${URL}/api/bills/${billId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) throw new Error("Delete failed");
-
-      fetchBills();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to delete");
-    }
-  }
+  if (loading) return <p style={{ padding: "20px" }}>Loading...</p>;
 
   return (
-    <div>
-      <h1>Bills</h1>
-      <h3>SET DIFFERENCE</h3>
-      <p>Patients with Appointment but are UNPAID</p>
+    <div style={{ padding: "20px" }}>
+      <h1>Bills Management</h1>
+      <button onClick={() => navigate("/")}>Back to Dashboard</button>
 
-      <button onClick={() => navigate('/')} >Back to Home</button>
-      <button onClick={() => navigate("/createBills")}>
-        Create +
-      </button>
-
-      <table border="1" cellPadding="10" style={{ width: "100%" }}>
+      <table border="1" cellPadding="10" style={{ width: "100%", marginTop: "20px", borderCollapse: "collapse" }}>
         <thead>
-          <tr>
+          <tr style={{ background: "#f4f4f4" }}>
             <th>Patient ID</th>
             <th>Patient Name</th>
-            <th>Bill Status</th>
-            <th>Bill Date</th>
+            <th>Status</th>
             <th>Actions</th>
           </tr>
         </thead>
-
         <tbody>
-          {difference.length === 0 ? (
-            <tr>
-              <td colSpan="5">No data yet.</td>
+          {difference.map((row) => (
+            <tr key={row.patient_id}>
+              <td>{row.patient_id}</td>
+              <td>{row.patient_name}</td>
+              <td style={{ color: row.bill_id ? "red" : "gray" }}>
+                {row.status}
+              </td>
+              <td>
+                {row.bill_id ? (
+                  <>
+                    <button onClick={() => navigate(`/editBills/${row.bill_id}`)}>
+                      ✏️ Edit Bill
+                    </button>
+                  </>
+                ) : (
+                  <button 
+                    style={{ background: "#10b981", color: "white", border: "none", padding: "5px 10px", borderRadius: "4px", cursor: "pointer" }}
+                    onClick={() => navigate("/createBills", { state: { patient: row } })}
+                  >
+                    ➕ Create Bill
+                  </button>
+                )}
+              </td>
             </tr>
-          ) : (
-            difference.map((row) => (
-              <tr key={row.bill_id || row.patient_id}>
-                <td>{row.patient_id}</td>
-                <td>{row.patient_name}</td>
-                <td>{row.status}</td>
-                <td>{row.bill_date}</td>
-
-                <td>
-                  <button
-                    onClick={() => {
-                      if (!row.bill_id) {
-                        alert("No bill exists for this patient");
-                        return;
-                      }
-                      navigate(`/readBills/${row.bill_id}`);
-                    }}
-                  >
-                    Read
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      if (!row.bill_id) {
-                        alert("No bill exists for this patient");
-                        return;
-                      }
-                      navigate(`/editBills/${row.bill_id}`);
-                    }}
-                  >
-                    Edit
-                  </button>
-
-                  <button onClick={() => handleDelete(row.bill_id)}>
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))
-          )}
+          ))}
         </tbody>
       </table>
     </div>
