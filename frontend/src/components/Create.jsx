@@ -10,7 +10,7 @@ function Create() {
   const [patientGender, setPatientGender] = useState("");
   const [patientAddress, setPatientAddress] = useState("");
   const [patientCondition, setPatientCondition] = useState("");
-  const [patientStatus, setPatientStatus] = useState("Admitted");
+  const [patientStatus, setPatientStatus] = useState("");
 
   const [doctors, setDoctors] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -25,6 +25,9 @@ function Create() {
   const [billAmount, setBillAmount] = useState("");
   const [billStatus, setBillStatus] = useState("Unpaid");
 
+  const [genders, setGenders] = useState([]);
+  const [statusList, setStatusList] = useState([]);
+
   useEffect(() => {
     async function fetchData() {
       try {
@@ -33,17 +36,52 @@ function Create() {
 
         const deptRes = await fetch(`${URL}/api/departments`);
         setDepartments(await deptRes.json());
+
+        fetchGender();
+        fetchStatus();
       } catch (err) {
-        console.error("Failed to load dropdown data", err);
+        console.error("Error loading selection data:", err);
       }
     }
+
     fetchData();
   }, []);
 
+  async function fetchGender() {
+    try {
+      const res = await fetch(`${URL}/api/patient/gender`);
+      const data = await res.json();
+
+      if (res.ok) {
+        const list = [...new Set(data.map((r) => r.gender))];
+        setGenders(list);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function fetchStatus() {
+    try {
+      const res = await fetch(`${URL}/api/patient/status`);
+      const data = await res.json();
+
+      if (res.ok) {
+        const list = [...new Set(data.map((r) => r.status))];
+        setStatusList(list);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
+
+    const costNum = parseFloat(treatmentCost) || 0;
+    const billNum = parseFloat(billAmount) || 0;
+
     try {
-      // Create Patient
       const patientRes = await fetch(`${URL}/api/patients`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -56,13 +94,14 @@ function Create() {
           status: patientStatus,
         }),
       });
-      if (!patientRes.ok) throw new Error(await patientRes.text());
+
+      if (!patientRes.ok) throw new Error("Failed to create patient");
+
       const patientData = await patientRes.json();
       const patientId = patientData.patient_id;
 
-      // Link doctor to department if selected
       if (selectedDoctorId && selectedDepartmentId) {
-        const linkRes = await fetch(`${URL}/api/doctor_department`, {
+        await fetch(`${URL}/api/doctor_department`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -70,147 +109,150 @@ function Create() {
             department_id: selectedDepartmentId,
           }),
         });
-        if (!linkRes.ok) throw new Error(await linkRes.text());
       }
 
-      // Create Appointment
       if (appointmentDate && selectedDoctorId) {
-        const appointmentRes = await fetch(`${URL}/api/appointments`, {
+        const formattedDate = appointmentDate.replace("T", " ") + ":00";
+
+        await fetch(`${URL}/api/appointments`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             patient_id: patientId,
             doctor_id: selectedDoctorId,
-            appointment_date: new Date(appointmentDate).toISOString(),
-          }),
-        });
-        if (!appointmentRes.ok) throw new Error(await appointmentRes.text());
-      }
-
-      // Create Treatment and Patient-Treatment
-      if (treatmentName && treatmentCost) {
-        const treatmentRes = await fetch(`${URL}/api/treatments`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            treatment_name: treatmentName,
-            cost: parseFloat(treatmentCost),
-          }),
-        });
-        if (!treatmentRes.ok) throw new Error(await treatmentRes.text());
-        const treatmentData = await treatmentRes.json();
-        const treatmentId = treatmentData.id;
-
-        await fetch(`${URL}/api/patient_treatments`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            patient_id: patientId,
-            treatment_id: treatmentId,
-            date_given: new Date().toISOString().slice(0, 10),
+            appointment_date: formattedDate,
           }),
         });
       }
 
-      // Create Bill
-      if (billAmount) {
-        await fetch(`${URL}/api/bills`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            patient_id: patientId,
-            amount: parseFloat(billAmount),
-            bill_date: new Date().toISOString().slice(0, 10),
-            status: billStatus,
-          }),
-        });
-      }
+      const treatmentRes = await fetch(`${URL}/api/treatments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          treatment_name: treatmentName,
+          cost: costNum,
+        }),
+      });
 
-      alert("Patient and related records created successfully!");
+      const treatmentData = await treatmentRes.json();
+
+      await fetch(`${URL}/api/patient_treatments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patient_id: patientId,
+          treatment_id: treatmentData.id,
+          date_given: new Date().toISOString().slice(0, 10),
+        }),
+      });
+
+      await fetch(`${URL}/api/bills`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patient_id: patientId,
+          amount: billNum,
+          bill_date: new Date().toISOString().slice(0, 10),
+          status: billStatus,
+        }),
+      });
+
+      alert("Record created successfully!");
       navigate("/");
     } catch (err) {
       console.error(err);
-      alert(err.message);
+      alert("Error creating record");
     }
   }
 
   return (
-    <div>
+    <div style={{ padding: "20px" }}>
       <h2>Create New Patient</h2>
-      <form onSubmit={handleSubmit}>
+
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "10px",
+          maxWidth: "500px",
+        }}
+      >
         <input
-          type="text"
           placeholder="Patient Name"
           value={patientName}
           onChange={(e) => setPatientName(e.target.value)}
-          required
         />
+
         <input
-          type="tel"
           placeholder="Phone"
           value={patientPhone}
           onChange={(e) => setPatientPhone(e.target.value)}
-          required
         />
-        <input
-          type="text"
-          placeholder="Gender"
+
+        {/* ✅ GENDER (FIXED - SAME AS EDIT STYLE) */}
+        <select
           value={patientGender}
           onChange={(e) => setPatientGender(e.target.value)}
-          required
-        />
+        >
+          <option value="">Select Gender</option>
+
+          {genders.map((g) => (
+            <option key={g} value={g}>
+              {g}
+            </option>
+          ))}
+        </select>
+
         <input
-          type="text"
           placeholder="Address"
           value={patientAddress}
           onChange={(e) => setPatientAddress(e.target.value)}
-          required
         />
+
         <input
-          type="text"
           placeholder="Condition"
           value={patientCondition}
           onChange={(e) => setPatientCondition(e.target.value)}
-          required
         />
 
-        <label>Status:</label>
+        {/* STATUS */}
         <select
           value={patientStatus}
           onChange={(e) => setPatientStatus(e.target.value)}
-          required
         >
-          <option value="Admitted">Admitted</option>
-          <option value="Discharged">Discharged</option>
+          <option value="">Select Status</option>
+          {statusList.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
         </select>
 
-        <label>Doctor:</label>
         <select
           value={selectedDoctorId}
           onChange={(e) => setSelectedDoctorId(e.target.value)}
         >
-          <option value="">-- Select Doctor --</option>
-          {doctors.map((doc) => (
-            <option key={doc.doctor_id} value={doc.doctor_id}>
-              {doc.doctor_name} ({doc.doctor_specialty})
+          <option value="">Select Doctor</option>
+          {doctors.map((d) => (
+            <option key={d.doctor_id} value={d.doctor_id}>
+              {d.doctor_name}
             </option>
           ))}
         </select>
 
-        <label>Department:</label>
         <select
           value={selectedDepartmentId}
           onChange={(e) => setSelectedDepartmentId(e.target.value)}
         >
-          <option value="">-- Select Department --</option>
-          {departments.map((dept) => (
-            <option key={dept.department_id} value={dept.department_id}>
-              {dept.department_name}
+          <option value="">Select Department</option>
+          {departments.map((d) => (
+            <option key={d.department_id} value={d.department_id}>
+              {d.department_name}
             </option>
           ))}
         </select>
 
-        <label>Appointment Date:</label>
         <input
           type="datetime-local"
           value={appointmentDate}
@@ -218,11 +260,11 @@ function Create() {
         />
 
         <input
-          type="text"
           placeholder="Treatment Name"
           value={treatmentName}
           onChange={(e) => setTreatmentName(e.target.value)}
         />
+
         <input
           type="number"
           placeholder="Treatment Cost"
@@ -236,13 +278,16 @@ function Create() {
           value={billAmount}
           onChange={(e) => setBillAmount(e.target.value)}
         />
-        <label>Bill Status:</label>
-        <select value={billStatus} onChange={(e) => setBillStatus(e.target.value)}>
+
+        <select
+          value={billStatus}
+          onChange={(e) => setBillStatus(e.target.value)}
+        >
           <option value="Unpaid">Unpaid</option>
           <option value="Paid">Paid</option>
         </select>
-
-        <button type="submit">Create Patient</button>
+        <button onClick={() => {navigate("/")}}> Cancel </button>
+        <button type="submit">Create</button>
       </form>
     </div>
   );
