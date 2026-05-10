@@ -72,14 +72,43 @@ app.post("/api/patients", (req, res) => {
 app.put("/api/patients/:id", (req, res) => {
   const { id } = req.params;
   const { patient_name, phone, gender, address, condition, status } = req.body;
-  db.query(
-    "UPDATE patients SET patient_name = ?, phone = ?, gender = ?, address = ?, `condition` = ?, `status` = ? WHERE patient_id = ?",
-    [patient_name, phone, gender, address, condition, status, id],
-    (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: "Patient updated successfully" });
-    },
-  );
+  
+  let query = "UPDATE patients SET ";
+  let params = [];
+  
+  if (patient_name !== undefined) {
+    query += "patient_name = ?, ";
+    params.push(patient_name);
+  }
+  if (phone !== undefined) {
+    query += "phone = ?, ";
+    params.push(phone || null);
+  }
+  if (gender !== undefined) {
+    query += "gender = ?, ";
+    params.push(gender || null);
+  }
+  if (address !== undefined) {
+    query += "address = ?, ";
+    params.push(address || null);
+  }
+  if (condition !== undefined) {
+    query += "`condition` = ?, ";
+    params.push(condition || null);
+  }
+  if (status !== undefined) {
+    query += "`status` = ?, ";
+    params.push(status || null);
+  }
+  
+  query = query.slice(0, -2);
+  query += " WHERE patient_id = ?";
+  params.push(id);
+  
+  db.query(query, params, (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: "Patient updated successfully" });
+  });
 });
 
 app.delete("/api/patients/:id", (req, res) => {
@@ -382,14 +411,33 @@ app.post("/api/appointments", (req, res) => {
 app.put("/api/appointments/:id", (req, res) => {
   const { id } = req.params;
   const { patient_id, doctor_id, appointment_date } = req.body;
-  db.query(
-    "UPDATE appointments SET patient_id = ?, doctor_id = ?, appointment_date = ? WHERE appointment_id = ?",
-    [patient_id, doctor_id, appointment_date, id],
-    (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: "Appointment updated successfully" });
-    },
-  );
+  
+  // Build dynamic query based on provided fields
+  let query = "UPDATE appointments SET ";
+  let params = [];
+  
+  if (doctor_id !== undefined) {
+    query += "doctor_id = ?, ";
+    params.push(doctor_id);
+  }
+  if (appointment_date !== undefined) {
+    query += "appointment_date = ?, ";
+    params.push(appointment_date);
+  }
+  if (patient_id !== undefined && patient_id !== null) {
+    query += "patient_id = ?, ";
+    params.push(patient_id);
+  }
+  
+  // Remove trailing comma and space
+  query = query.slice(0, -2);
+  query += " WHERE appointment_id = ?";
+  params.push(id);
+  
+  db.query(query, params, (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: "Appointment updated successfully" });
+  });
 });
 
 app.delete("/api/appointments/:id", (req, res) => {
@@ -430,14 +478,37 @@ app.post("/api/bills", (req, res) => {
 app.put("/api/bills/:id", (req, res) => {
   const { id } = req.params;
   const { patient_id, amount, bill_date, status } = req.body;
-  db.query(
-    "UPDATE bills SET patient_id = ?, amount = ?, bill_date = ?, status = ? WHERE bill_id = ?",
-    [patient_id, amount, bill_date, status, id],
-    (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: "Bill updated successfully" });
-    },
-  );
+  
+  // Build dynamic query based on provided fields
+  let query = "UPDATE bills SET ";
+  let params = [];
+  
+  if (amount !== undefined) {
+    query += "amount = ?, ";
+    params.push(amount);
+  }
+  if (bill_date !== undefined) {
+    query += "bill_date = ?, ";
+    params.push(bill_date);
+  }
+  if (status !== undefined) {
+    query += "status = ?, ";
+    params.push(status);
+  }
+  if (patient_id !== undefined && patient_id !== null) {
+    query += "patient_id = ?, ";
+    params.push(patient_id);
+  }
+  
+  // Remove trailing comma and space
+  query = query.slice(0, -2);
+  query += " WHERE bill_id = ?";
+  params.push(id);
+  
+  db.query(query, params, (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: "Bill updated successfully" });
+  });
 });
 
 app.delete("/api/bills/:id", (req, res) => {

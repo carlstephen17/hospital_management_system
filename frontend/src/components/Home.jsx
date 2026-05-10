@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { URL } from "../API";
 import { useNavigate, useLocation } from "react-router-dom";
-import UNF from "../normalization/UNF";
 
 const sidebarStyles = {
   sidebar: {
@@ -158,17 +157,12 @@ const mainStyles = {
     color: "#94a3b8",
     margin: "6px 0 0",
   },
-  tableCard: {
-    background: "#fff",
-    borderRadius: "12px",
-    border: "1px solid #e2e8f0",
-    padding: "24px",
-  },
 };
 
 const navItems = [
   { icon: "🏠", label: "Dashboard", path: "/" },
   { icon: "🧾", label: "Bills", path: "/bills" },
+  { icon: "👨‍⚕️", label: "Patients", path: "/patients" },
   { icon: "📅", label: "Appointments", path: "/appointments" },
   { icon: "💊", label: "Treatments", path: "/treatments" },
   { icon: "📊", label: "Reports", path: "/reports" },
@@ -179,118 +173,68 @@ function Home() {
   const [doctors, setDoctors] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [bills, setBills] = useState([]);
-  const [treatments, setTreatments] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [patientTreatments, setPatientTreatments] = useState([]);
 
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    fetchPatients();
-    fetchDoctors();
-    fetchAppointments();
-    fetchBills();
-    fetchTreatments();
-    fetchDepartments();
-    fetchPatientTreatments();
+    loadDashboard();
   }, []);
 
-  async function fetchPatients() {
-    const res = await fetch(`${URL}/api/patients`);
-    const data = await res.json();
-    if (res.ok) setPatients(data);
-  }
+  async function loadDashboard() {
+    try {
+      const [
+        patientsData,
+        doctorsData,
+        appointmentsData,
+        billsData,
+      ] = await Promise.all([
+        fetch(`${URL}/api/patients`).then((r) => r.json()),
+        fetch(`${URL}/api/doctors`).then((r) => r.json()),
+        fetch(`${URL}/api/appointments`).then((r) => r.json()),
+        fetch(`${URL}/api/bills`).then((r) => r.json()),
+      ]);
 
-  async function fetchDoctors() {
-    const res = await fetch(`${URL}/api/doctors`);
-    const data = await res.json();
-    if (res.ok) setDoctors(data);
-  }
-
-  async function fetchAppointments() {
-    const res = await fetch(`${URL}/api/appointments`);
-    const data = await res.json();
-    if (res.ok) setAppointments(data);
-  }
-
-  async function fetchBills() {
-    const res = await fetch(`${URL}/api/bills`);
-    const data = await res.json();
-    if (res.ok) setBills(data);
-  }
-
-  async function fetchTreatments() {
-    const res = await fetch(`${URL}/api/treatments`);
-    const data = await res.json();
-    if (res.ok) setTreatments(data);
-  }
-
-  async function fetchDepartments() {
-    const res = await fetch(`${URL}/api/departments`);
-    const data = await res.json();
-    if (res.ok) setDepartments(data);
-  }
-
-  async function fetchPatientTreatments() {
-    const res = await fetch(`${URL}/api/patient_treatments`);
-    const data = await res.json();
-    if (res.ok) setPatientTreatments(data);
-  }
-
-  const getDoctorForPatient = (patientId) => {
-    const appointment = appointments.find(
-      (a) => String(a.patient_id) === String(patientId)
-    );
-    if (!appointment) return { doctor_name: "N/A", doctor_specialty: "N/A" };
-
-    const doctor = doctors.find(
-      (d) => String(d.doctor_id) === String(appointment.doctor_id)
-    );
-
-    return doctor || { doctor_name: "N/A", doctor_specialty: "N/A" };
-  };
-
-  const handleDelete = async (patientId) => {
-    if (!window.confirm("Delete this patient?")) return;
-
-    const res = await fetch(`${URL}/api/patients/${patientId}`, {
-      method: "DELETE",
-    });
-
-    if (res.ok) {
-      setPatients((prev) =>
-        prev.filter((p) => p.patient_id !== patientId)
+      setPatients(Array.isArray(patientsData) ? patientsData : []);
+      setDoctors(Array.isArray(doctorsData) ? doctorsData : []);
+      setAppointments(
+        Array.isArray(appointmentsData) ? appointmentsData : []
       );
+      setBills(Array.isArray(billsData) ? billsData : []);
+    } catch (err) {
+      console.error("Dashboard load error:", err);
     }
-  };
+  }
 
-  const handleDeleteAll = async () => {
-    if (!window.confirm("Delete ALL patients?")) return;
+  const paidBills = bills.filter(
+    (b) => b.status?.toLowerCase() === "paid"
+  ).length;
 
-    const res = await fetch(`${URL}/api/deleteAll`, {
-      method: "DELETE",
-    });
-
-    if (res.ok) {
-      setPatients([]);
-      setDoctors([]);
-      setAppointments([]);
-      setBills([]);
-      setTreatments([]);
-      setDepartments([]);
-      setPatientTreatments([]);
-    }
-  };
-
-  const paidBills = bills.filter((b) => b.status === "Paid").length;
-  const pendingBills = bills.filter((b) => b.status !== "Paid").length;
+  const pendingBills = bills.filter(
+    (b) => b.status?.toLowerCase() !== "paid"
+  ).length;
 
   const stats = [
-    { label: "Total Patients", value: patients.length, sub: "Registered records" },
-    { label: "Doctors", value: doctors.length, sub: "Active staff" },
-    { label: "Appointments", value: appointments.length, sub: "Scheduled" },
-    { label: "Paid Bills", value: paidBills, sub: `${pendingBills} pending` },
+    {
+      label: "Total Patients",
+      value: patients.length,
+      sub: "Registered records",
+    },
+    {
+      label: "Doctors",
+      value: doctors.length,
+      sub: "Active staff",
+    },
+    {
+      label: "Appointments",
+      value: appointments.length,
+      sub: "Scheduled",
+    },
+    {
+      label: "Paid Bills",
+      value: paidBills,
+      sub: `${pendingBills} pending`,
+    },
   ];
 
   return (
@@ -298,14 +242,19 @@ function Home() {
       <aside style={sidebarStyles.sidebar}>
         <div style={sidebarStyles.sidebarBrand}>
           <div style={sidebarStyles.brandIcon}>H+</div>
+
           <div>
             <p style={sidebarStyles.brandName}>MediCare</p>
-            <p style={sidebarStyles.brandSub}>Hospital System</p>
+            <p style={sidebarStyles.brandSub}>
+              Hospital System
+            </p>
           </div>
         </div>
 
         <nav style={sidebarStyles.navSection}>
-          <span style={sidebarStyles.navLabel}>Main Menu</span>
+          <span style={sidebarStyles.navLabel}>
+            Main Menu
+          </span>
 
           {navItems.map((item) => (
             <button
@@ -318,7 +267,10 @@ function Home() {
               }}
               onClick={() => navigate(item.path)}
             >
-              <span style={sidebarStyles.navIcon}>{item.icon}</span>
+              <span style={sidebarStyles.navIcon}>
+                {item.icon}
+              </span>
+
               {item.label}
             </button>
           ))}
@@ -326,14 +278,19 @@ function Home() {
 
         <div style={sidebarStyles.sidebarFooter}>
           <p style={sidebarStyles.footerText}>
-            Hospital Management<br />System v1.0
+            Hospital Management
+            <br />
+            System v1.0
           </p>
         </div>
       </aside>
 
       <main style={mainStyles.main}>
         <div style={mainStyles.pageHeader}>
-          <h1 style={mainStyles.pageTitle}>Dashboard</h1>
+          <h1 style={mainStyles.pageTitle}>
+            Dashboard
+          </h1>
+
           <p style={mainStyles.pageSub}>
             {new Date().toLocaleDateString("en-US", {
               weekday: "long",
@@ -346,28 +303,23 @@ function Home() {
 
         <div style={mainStyles.statsRow}>
           {stats.map((s) => (
-            <div key={s.label} style={mainStyles.statCard}>
-              <p style={mainStyles.statLabel}>{s.label}</p>
-              <p style={mainStyles.statValue}>{s.value}</p>
-              <p style={mainStyles.statSub}>{s.sub}</p>
+            <div
+              key={s.label}
+              style={mainStyles.statCard}
+            >
+              <p style={mainStyles.statLabel}>
+                {s.label}
+              </p>
+
+              <p style={mainStyles.statValue}>
+                {s.value}
+              </p>
+
+              <p style={mainStyles.statSub}>
+                {s.sub}
+              </p>
             </div>
           ))}
-        </div>
-
-        <div style={mainStyles.tableCard}>
-          <UNF
-            patients={patients}
-            doctors={doctors}
-            appointments={appointments}
-            bills={bills}
-            treatments={treatments}
-            departments={departments}
-            patientTreatments={patientTreatments}
-            getDoctorForPatient={getDoctorForPatient}
-            navigate={navigate}
-            handleDelete={handleDelete}
-            handleDeleteAll={handleDeleteAll}
-          />
         </div>
       </main>
     </div>
