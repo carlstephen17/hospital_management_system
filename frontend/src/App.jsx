@@ -11,6 +11,9 @@ import CreateBills from "./CRUD/CRUD_Bills/CreateBills";
 import ReadBills from "./CRUD/CRUD_Bills/ReadBills";
 import EditBills from "./CRUD/CRUD_Bills/EditBills";
 
+import Reports from "./components/Reports";
+import Appointments from "./pages/Appointments";
+
 function App() {
   return (
     <Router>
@@ -22,7 +25,12 @@ function App() {
         <Route path="/patients" element={<Patients />} />
 
         {/* Doctors */}
-        <Route path="doctors" element={<Doctors />} />
+        <Route path="/doctors" element={<Doctors />} />
+
+        <Route path="/appointments" element={<Appointments />} />
+
+
+        <Route path="/reports" element={<Reports />} />
 
         {/* Bills */}
         <Route path="/bills" element={<Bills />} />

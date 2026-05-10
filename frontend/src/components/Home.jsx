@@ -163,6 +163,7 @@ const navItems = [
   { icon: "🏠", label: "Dashboard", path: "/" },
   { icon: "🧾", label: "Bills", path: "/bills" },
   { icon: "👨‍⚕️", label: "Patients", path: "/patients" },
+  { icon: "👨‍⚕️", label: "Doctors", path: "/doctors" },
   { icon: "📅", label: "Appointments", path: "/appointments" },
   { icon: "💊", label: "Treatments", path: "/treatments" },
   { icon: "📊", label: "Reports", path: "/reports" },
@@ -183,23 +184,17 @@ function Home() {
 
   async function loadDashboard() {
     try {
-      const [
-        patientsData,
-        doctorsData,
-        appointmentsData,
-        billsData,
-      ] = await Promise.all([
-        fetch(`${URL}/api/patients`).then((r) => r.json()),
-        fetch(`${URL}/api/doctors`).then((r) => r.json()),
-        fetch(`${URL}/api/appointments`).then((r) => r.json()),
-        fetch(`${URL}/api/bills`).then((r) => r.json()),
-      ]);
+      const [patientsData, doctorsData, appointmentsData, billsData] =
+        await Promise.all([
+          fetch(`${URL}/api/patients`).then((r) => r.json()),
+          fetch(`${URL}/api/doctors`).then((r) => r.json()),
+          fetch(`${URL}/api/appointments`).then((r) => r.json()),
+          fetch(`${URL}/api/bills`).then((r) => r.json()),
+        ]);
 
       setPatients(Array.isArray(patientsData) ? patientsData : []);
       setDoctors(Array.isArray(doctorsData) ? doctorsData : []);
-      setAppointments(
-        Array.isArray(appointmentsData) ? appointmentsData : []
-      );
+      setAppointments(Array.isArray(appointmentsData) ? appointmentsData : []);
       setBills(Array.isArray(billsData) ? billsData : []);
     } catch (err) {
       console.error("Dashboard load error:", err);
@@ -207,11 +202,11 @@ function Home() {
   }
 
   const paidBills = bills.filter(
-    (b) => b.status?.toLowerCase() === "paid"
+    (b) => b.status?.toLowerCase() === "paid",
   ).length;
 
   const pendingBills = bills.filter(
-    (b) => b.status?.toLowerCase() !== "paid"
+    (b) => b.status?.toLowerCase() !== "paid",
   ).length;
 
   const stats = [
@@ -245,16 +240,12 @@ function Home() {
 
           <div>
             <p style={sidebarStyles.brandName}>MediCare</p>
-            <p style={sidebarStyles.brandSub}>
-              Hospital System
-            </p>
+            <p style={sidebarStyles.brandSub}>Hospital System</p>
           </div>
         </div>
 
         <nav style={sidebarStyles.navSection}>
-          <span style={sidebarStyles.navLabel}>
-            Main Menu
-          </span>
+          <span style={sidebarStyles.navLabel}>Main Menu</span>
 
           {navItems.map((item) => (
             <button
@@ -267,9 +258,7 @@ function Home() {
               }}
               onClick={() => navigate(item.path)}
             >
-              <span style={sidebarStyles.navIcon}>
-                {item.icon}
-              </span>
+              <span style={sidebarStyles.navIcon}>{item.icon}</span>
 
               {item.label}
             </button>
@@ -287,9 +276,7 @@ function Home() {
 
       <main style={mainStyles.main}>
         <div style={mainStyles.pageHeader}>
-          <h1 style={mainStyles.pageTitle}>
-            Dashboard
-          </h1>
+          <h1 style={mainStyles.pageTitle}>Dashboard</h1>
 
           <p style={mainStyles.pageSub}>
             {new Date().toLocaleDateString("en-US", {
@@ -303,21 +290,12 @@ function Home() {
 
         <div style={mainStyles.statsRow}>
           {stats.map((s) => (
-            <div
-              key={s.label}
-              style={mainStyles.statCard}
-            >
-              <p style={mainStyles.statLabel}>
-                {s.label}
-              </p>
+            <div key={s.label} style={mainStyles.statCard}>
+              <p style={mainStyles.statLabel}>{s.label}</p>
 
-              <p style={mainStyles.statValue}>
-                {s.value}
-              </p>
+              <p style={mainStyles.statValue}>{s.value}</p>
 
-              <p style={mainStyles.statSub}>
-                {s.sub}
-              </p>
+              <p style={mainStyles.statSub}>{s.sub}</p>
             </div>
           ))}
         </div>

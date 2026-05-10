@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { URL } from "../../API";
 import { modalStyles as ms } from "../../components/SideBar";
 
-function Field({ label, required, hint, children }) {
+function Field({ label, required, children }) {
   return (
     <div style={ms.formGroup}>
       <label style={ms.label}>
@@ -12,24 +12,17 @@ function Field({ label, required, hint, children }) {
         )}
       </label>
       {children}
-      {hint && (
-        <span style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>
-          {hint}
-        </span>
-      )}
     </div>
   );
 }
 
-export default function AddPatientModal({ onClose, onSaved }) {
+export default function EditDoctorModal({ doctor, onClose, onSaved }) {
   const [form, setForm] = useState({
-    patient_name: "",
-    phone: "",
-    gender: "",
-    dob: "",
-    blood_type: "",
-    address: "",
-    notes: "",
+    doctor_name: doctor.doctor_name || "",
+    phone: doctor.phone || "",
+    doctor_specialty: doctor.doctor_specialty || "",
+    department_id: doctor.department_id || "",
+    email: doctor.email || "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -37,20 +30,20 @@ export default function AddPatientModal({ onClose, onSaved }) {
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   async function handleSave() {
-    const { patient_name, phone, gender, address } = form;
-    if (!patient_name || !phone || !gender || !address) {
-      setError("Name, Phone, Gender, and Address are required.");
+    const { doctor_name, phone, doctor_specialty, email } = form;
+    if (!doctor_name || !phone || !doctor_specialty || !email) {
+      setError("Name, Phone, Specialization, and Email are required.");
       return;
     }
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`${URL}/api/patients`, {
-        method: "POST",
+      const res = await fetch(`${URL}/api/doctors/${doctor.doctor_id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      if (!res.ok) throw new Error("Failed to save patient");
+      if (!res.ok) throw new Error("Failed to update doctor");
       onSaved();
     } catch (err) {
       setError(err.message);
@@ -66,7 +59,7 @@ export default function AddPatientModal({ onClose, onSaved }) {
     >
       <div style={ms.modal}>
         <div style={ms.header}>
-          <span style={ms.title}>Add New Patient</span>
+          <span style={ms.title}>Edit Doctor</span>
           <button style={ms.closeBtn} onClick={onClose}>
             ✕
           </button>
@@ -77,72 +70,44 @@ export default function AddPatientModal({ onClose, onSaved }) {
             <Field label="Full Name" required>
               <input
                 style={ms.input}
-                placeholder="e.g. Maria Santos"
-                value={form.patient_name}
-                onChange={set("patient_name")}
+                value={form.doctor_name}
+                onChange={set("doctor_name")}
               />
             </Field>
             <Field label="Phone" required>
               <input
                 style={ms.input}
-                placeholder="+63 9XX XXX XXXX"
                 value={form.phone}
                 onChange={set("phone")}
               />
             </Field>
           </div>
           <div style={ms.grid2}>
-            <Field label="Gender" required>
-              <select
-                style={ms.select}
-                value={form.gender}
-                onChange={set("gender")}
-              >
-                <option value="">Select</option>
-                <option>Male</option>
-                <option>Female</option>
-              </select>
-            </Field>
-            <Field label="Date of Birth">
+            <Field label="Specialization" required>
               <input
                 style={ms.input}
-                type="date"
-                value={form.dob}
-                onChange={set("dob")}
+                value={form.doctor_specialty}
+                onChange={set("doctor_specialty")}
+              />
+            </Field>
+            <Field label="Department ID">
+              <input
+                style={ms.input}
+                value={form.department_id}
+                onChange={set("department_id")}
               />
             </Field>
           </div>
           <div style={ms.grid2}>
-            <Field label="Blood Type">
-              <select
-                style={ms.select}
-                value={form.blood_type}
-                onChange={set("blood_type")}
-              >
-                <option value="">Select</option>
-                {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((b) => (
-                  <option key={b}>{b}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Address" required>
+            <Field label="Email" required>
               <input
                 style={ms.input}
-                placeholder="City, Province"
-                value={form.address}
-                onChange={set("address")}
+                type="email"
+                value={form.email}
+                onChange={set("email")}
               />
             </Field>
           </div>
-          <Field label="Medical Notes">
-            <textarea
-              style={{ ...ms.input, resize: "none" }}
-              rows={3}
-              placeholder="Allergies, conditions..."
-              value={form.notes}
-              onChange={set("notes")}
-            />
-          </Field>
         </div>
         <div style={ms.footer}>
           <button style={ms.cancelBtn} onClick={onClose}>
@@ -157,7 +122,7 @@ export default function AddPatientModal({ onClose, onSaved }) {
             onClick={handleSave}
             disabled={saving}
           >
-            {saving ? "Saving…" : "Save Patient"}
+            {saving ? "Saving…" : "Save Changes"}
           </button>
         </div>
       </div>
