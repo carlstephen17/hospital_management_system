@@ -51,3 +51,4 @@ This presentation demonstrates the Hospital Management System built with React/V
 - Aim for 10–15 minutes.
 - Spend roughly 1–2 minutes per major section.
 - Reserve 2 minutes to answer questions or show extra functionality.
+Updated 
