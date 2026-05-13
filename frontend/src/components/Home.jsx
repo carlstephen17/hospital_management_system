@@ -157,6 +157,89 @@ const mainStyles = {
     color: "#94a3b8",
     margin: "6px 0 0",
   },
+  summaryGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: "16px",
+    marginBottom: "28px",
+  },
+  analysisCard: {
+    background: "#fff",
+    borderRadius: "18px",
+    border: "1px solid #e2e8f0",
+    padding: "24px",
+    minHeight: "260px",
+    display: "flex",
+    flexDirection: "column",
+  },
+  sectionHeader: {
+    fontSize: "16px",
+    fontWeight: "700",
+    color: "#0f172a",
+    margin: "0 0 16px",
+  },
+  progressRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "14px",
+    marginBottom: "14px",
+  },
+  progressLabel: {
+    fontSize: "13px",
+    color: "#334155",
+    margin: 0,
+    fontWeight: 600,
+  },
+  progressValue: {
+    fontSize: "13px",
+    color: "#64748b",
+    minWidth: "48px",
+    textAlign: "right",
+  },
+  barOuter: {
+    height: "10px",
+    background: "#eef2ff",
+    borderRadius: "999px",
+    overflow: "hidden",
+    marginTop: "8px",
+  },
+  barInner: {
+    height: "100%",
+    background: "#2563eb",
+    borderRadius: "999px",
+  },
+  miniList: {
+    listStyle: "none",
+    padding: 0,
+    margin: 0,
+    display: "grid",
+    gap: "12px",
+  },
+  miniListItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "12px 14px",
+    borderRadius: "12px",
+    background: "#f8fafc",
+  },
+  miniLabel: {
+    margin: 0,
+    fontSize: "13px",
+    color: "#475569",
+  },
+  miniValue: {
+    margin: 0,
+    fontSize: "14px",
+    fontWeight: 700,
+    color: "#0f172a",
+  },
+  emptyText: {
+    color: "#94a3b8",
+    fontSize: "13px",
+    margin: 0,
+  },
 };
 
 const navItems = [
@@ -170,10 +253,8 @@ const navItems = [
 ];
 
 function Home() {
-  const [patients, setPatients] = useState([]);
-  const [doctors, setDoctors] = useState([]);
-  const [appointments, setAppointments] = useState([]);
-  const [bills, setBills] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -184,53 +265,51 @@ function Home() {
 
   async function loadDashboard() {
     try {
-      const [patientsData, doctorsData, appointmentsData, billsData] =
-        await Promise.all([
-          fetch(`${URL}/api/patients`).then((r) => r.json()),
-          fetch(`${URL}/api/doctors`).then((r) => r.json()),
-          fetch(`${URL}/api/appointments`).then((r) => r.json()),
-          fetch(`${URL}/api/bills`).then((r) => r.json()),
-        ]);
-
-      setPatients(Array.isArray(patientsData) ? patientsData : []);
-      setDoctors(Array.isArray(doctorsData) ? doctorsData : []);
-      setAppointments(Array.isArray(appointmentsData) ? appointmentsData : []);
-      setBills(Array.isArray(billsData) ? billsData : []);
+      const res = await fetch(`${URL}/api/analytics`);
+      if (!res.ok) throw new Error("Analytics request failed");
+      const data = await res.json();
+      setAnalytics(data);
     } catch (err) {
       console.error("Dashboard load error:", err);
+      setAnalytics({});
+    } finally {
+      setLoading(false);
     }
   }
-
-  const paidBills = bills.filter(
-    (b) => b.status?.toLowerCase() === "paid",
-  ).length;
-
-  const pendingBills = bills.filter(
-    (b) => b.status?.toLowerCase() !== "paid",
-  ).length;
 
   const stats = [
     {
       label: "Total Patients",
-      value: patients.length,
-      sub: "Registered records",
+      value: analytics?.total_patients ?? 0,
+      sub: "Registered patients",
+    },
+    {
+      label: "Critical Patients",
+      value: analytics?.critical_patients ?? 0,
+      sub: "Needs immediate attention",
     },
     {
       label: "Doctors",
-      value: doctors.length,
-      sub: "Active staff",
+      value: analytics?.total_doctors ?? 0,
+      sub: "Available specialists",
     },
     {
       label: "Appointments",
-      value: appointments.length,
-      sub: "Scheduled",
-    },
-    {
-      label: "Paid Bills",
-      value: paidBills,
-      sub: `${pendingBills} pending`,
+      value: analytics?.total_appointments ?? 0,
+      sub: "Upcoming schedules",
     },
   ];
+
+  const genderData = analytics?.gender_distribution ?? [];
+  const statusData = analytics?.status_distribution ?? [];
+  const topConditions = analytics?.top_conditions ?? [];
+  const billSummary = analytics ? {
+    total: analytics.total_bills ?? 0,
+    amount: analytics.total_amount ?? 0,
+    paid: analytics.paid_bills ?? 0,
+    unpaid: analytics.unpaid_bills ?? 0,
+  } : null;
+  const appointmentDoctors = analytics?.appointments_by_doctor ?? [];
 
   return (
     <div style={mainStyles.page}>
@@ -298,6 +377,111 @@ function Home() {
               <p style={mainStyles.statSub}>{s.sub}</p>
             </div>
           ))}
+        </div>
+
+        <div style={mainStyles.summaryGrid}>
+          <section style={mainStyles.analysisCard}>
+            <p style={mainStyles.sectionHeader}>Gender distribution</p>
+            {loading ? (
+              <p style={mainStyles.emptyText}>Loading analytics...</p>
+            ) : genderData.length ? (
+              genderData.map((row) => (
+                <div key={row.gender} style={mainStyles.progressRow}>
+                  <div style={{ flex: 1 }}>
+                    <p style={mainStyles.progressLabel}>{row.gender}</p>
+                    <div style={mainStyles.barOuter}>
+                      <div
+                        style={{
+                          ...mainStyles.barInner,
+                          width: `${row.percentage}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <p style={mainStyles.progressValue}>
+                    {row.count} ({row.percentage}%)
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p style={mainStyles.emptyText}>No gender data available.</p>
+            )}
+          </section>
+
+          <section style={mainStyles.analysisCard}>
+            <p style={mainStyles.sectionHeader}>Patient status</p>
+            {loading ? (
+              <p style={mainStyles.emptyText}>Loading analytics...</p>
+            ) : statusData.length ? (
+              statusData.map((row) => (
+                <div key={row.status} style={mainStyles.progressRow}>
+                  <div style={{ flex: 1 }}>
+                    <p style={mainStyles.progressLabel}>{row.status}</p>
+                    <div style={mainStyles.barOuter}>
+                      <div
+                        style={{
+                          ...mainStyles.barInner,
+                          width: `${row.percentage}%`,
+                          background: "#22c55e",
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <p style={mainStyles.progressValue}>
+                    {row.count} ({row.percentage}%)
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p style={mainStyles.emptyText}>No patient status data available.</p>
+            )}
+          </section>
+
+          <section style={mainStyles.analysisCard}>
+            <p style={mainStyles.sectionHeader}>Billing summary</p>
+            {loading ? (
+              <p style={mainStyles.emptyText}>Loading analytics...</p>
+            ) : billSummary ? (
+              <ul style={mainStyles.miniList}>
+                <li style={mainStyles.miniListItem}>
+                  <p style={mainStyles.miniLabel}>Total bills</p>
+                  <p style={mainStyles.miniValue}>{billSummary.total}</p>
+                </li>
+                <li style={mainStyles.miniListItem}>
+                  <p style={mainStyles.miniLabel}>Paid bills</p>
+                  <p style={mainStyles.miniValue}>{billSummary.paid}</p>
+                </li>
+                <li style={mainStyles.miniListItem}>
+                  <p style={mainStyles.miniLabel}>Unpaid bills</p>
+                  <p style={mainStyles.miniValue}>{billSummary.unpaid}</p>
+                </li>
+                <li style={mainStyles.miniListItem}>
+                  <p style={mainStyles.miniLabel}>Total billed amount</p>
+                  <p style={mainStyles.miniValue}>${billSummary.amount}</p>
+                </li>
+              </ul>
+            ) : (
+              <p style={mainStyles.emptyText}>No billing data available.</p>
+            )}
+          </section>
+
+          <section style={mainStyles.analysisCard}>
+            <p style={mainStyles.sectionHeader}>Top patient conditions</p>
+            {loading ? (
+              <p style={mainStyles.emptyText}>Loading analytics...</p>
+            ) : topConditions.length ? (
+              <ul style={mainStyles.miniList}>
+                {topConditions.map((row) => (
+                  <li key={row.condition_name} style={mainStyles.miniListItem}>
+                    <p style={mainStyles.miniLabel}>{row.condition_name}</p>
+                    <p style={mainStyles.miniValue}>{row.count}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p style={mainStyles.emptyText}>No condition data available.</p>
+            )}
+          </section>
         </div>
       </main>
     </div>
