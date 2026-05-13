@@ -1,9 +1,11 @@
 import React, { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { URL } from "../API";
-import { useNavigate } from "react-router-dom";
+import { sidebarStyles, navItems } from "./SideBar";
 
 function Reports() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [cartesian, setCartesian] = useState([]);
   const [unionData, setUnionData] = useState([]);
@@ -13,140 +15,322 @@ function Reports() {
   const loadReports = () => {
     setLoading(true);
 
-    // 1. Cartesian Product
     fetch(`${URL}/api/reports/cartesian`)
-      .then(res => res.json())
-      .then(data => setCartesian(data))
-      .catch(err => console.error("Cartesian error:", err));
+      .then((res) => res.json())
+      .then((data) => setCartesian(Array.isArray(data) ? data : []))
+      .catch((err) => console.error("Cartesian error:", err));
 
-    // 2. UNION
     fetch(`${URL}/api/reports/union`)
-      .then(res => res.json())
-      .then(data => setUnionData(data))
-      .catch(err => console.error("Union error:", err));
+      .then((res) => res.json())
+      .then((data) => setUnionData(Array.isArray(data) ? data : []))
+      .catch((err) => console.error("Union error:", err));
 
-    // 3. DIFFERENCE
     fetch(`${URL}/api/reports/difference`)
-      .then(res => res.json())
-      .then(data => setDifference(data))
-      .catch(err => console.error("Difference error:", err))
+      .then((res) => res.json())
+      .then((data) => setDifference(Array.isArray(data) ? data : []))
+      .catch((err) => console.error("Difference error:", err))
       .finally(() => setLoading(false));
   };
 
+  const TH = {
+    padding: "14px 18px",
+    textAlign: "left",
+    fontSize: "12px",
+    fontWeight: "600",
+    color: "#64748b",
+    borderBottom: "1px solid #e2e8f0",
+    background: "#f8fafc",
+    whiteSpace: "nowrap",
+  };
+
+  const TD = {
+    padding: "14px 18px",
+    fontSize: "13px",
+    color: "#334155",
+    borderBottom: "1px solid #e2e8f0",
+    verticalAlign: "middle",
+    whiteSpace: "nowrap",
+  };
+
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial" }}>
-      <h2>Advanced Reports (For Project Requirements)</h2>
-      
-      <button 
-        onClick={loadReports} 
-        disabled={loading}
-        style={{ 
-          padding: "12px 20px", 
-          fontSize: "16px", 
-          marginBottom: "30px",
-          background: "#007bff",
-          color: "white",
-          border: "none",
-          borderRadius: "5px",
-          cursor: "pointer"
+    <div
+      style={{
+        display: "flex",
+        fontFamily: "'Inter','Segoe UI',Arial,sans-serif",
+        background: "#f8fafc",
+        minHeight: "100vh",
+      }}
+    >
+      <aside style={sidebarStyles.sidebar}>
+        <div style={sidebarStyles.sidebarBrand}>
+          <div style={sidebarStyles.brandIcon}>H+</div>
+          <div>
+            <p style={sidebarStyles.brandName}>MediCare</p>
+            <p style={sidebarStyles.brandSub}>Hospital System</p>
+          </div>
+        </div>
+
+        <nav style={sidebarStyles.navSection}>
+          <span style={sidebarStyles.navLabel}>Main Menu</span>
+          {navItems.map((item) => (
+            <button
+              key={item.label}
+              style={{
+                ...sidebarStyles.navBtn,
+                ...(location.pathname === item.path
+                  ? sidebarStyles.navBtnActive
+                  : {}),
+              }}
+              onClick={() => navigate(item.path)}
+            >
+              <span style={sidebarStyles.navIcon}>{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        <div style={sidebarStyles.sidebarFooter}>
+          <p style={sidebarStyles.footerText}>
+            Hospital Management
+            <br />
+            System v1.0
+          </p>
+        </div>
+      </aside>
+
+      <main
+        style={{
+          marginLeft: "220px",
+          padding: "32px 28px",
+          width: "100%",
+          boxSizing: "border-box",
         }}
       >
-        {loading ? "Loading..." : "Load Cartesian, UNION & DIFFERENCE Reports"}
-      </button>
+        <div style={{ marginBottom: "24px" }}>
+          <h1 style={{ margin: 0, fontSize: "24px", fontWeight: 700 }}>
+            Reports
+          </h1>
+          <p style={{ margin: 0, fontSize: "14px", color: "#64748b" }}>
+            View advanced SQL reports for project requirements.
+          </p>
+        </div>
 
-      <button 
-        onClick={() => {
-            navigate("/");        
-        }}
-        style={{ 
-          padding: "12px 20px", 
-          fontSize: "16px", 
-          marginLeft: "10px",
-          marginBottom: "30px",
-          background: "#6c757d",
-          color: "white",
-          border: "none",
-          borderRadius: "5px",
-          cursor: "pointer"
-        }}
-      >
-        Back to Home
-      </button>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "10px",
+            marginBottom: "18px",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              color: "#475569",
+              fontSize: "14px",
+              maxWidth: "720px",
+            }}
+          >
+            Generate the Cartesian, UNION, and SET DIFFERENCE reports for
+            hospital data.
+          </p>
 
-      <h3>1. Cartesian Product </h3>
-      <p>Doctors × Patients (with condition)</p>
-      <table border="1" cellPadding="10" style={{ borderCollapse: "collapse", width: "100%", marginBottom: "40px" }}>
-        <thead>
-          <tr style={{ background: "#f0f0f0" }}>
-            <th>Doctor Name</th>
-            <th>Patient Name</th>
-            <th>Condition</th>
-          </tr>
-        </thead>
-        <tbody>
-          {cartesian.length === 0 ? (
-            <tr><td colSpan="3" style={{ textAlign: "center", padding: "20px" }}>No data yet. Click the button above.</td></tr>
-          ) : (
-            cartesian.map((row, index) => (
-              <tr key={index}>
-                <td>{row.doctor_name}</td>
-                <td>{row.patient_name}</td>
-                <td>{row.condition}</td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <button
+              onClick={loadReports}
+              disabled={loading}
+              style={{
+                padding: "10px 16px",
+                borderRadius: "8px",
+                border: "none",
+                background: "#2563eb",
+                color: "#fff",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: "pointer",
+                opacity: loading ? 0.7 : 1,
+              }}
+            >
+              {loading ? "Loading..." : "Load Reports"}
+            </button>
+          </div>
+        </div>
 
-      <h3>2. UNION </h3>
-      <p>Patients who had Treatment</p>
-      <table border="1" cellPadding="10" style={{ borderCollapse: "collapse", width: "100%", marginBottom: "40px" }}>
-        <thead>
-          <tr style={{ background: "#f0f0f0" }}>
-            <th>Patient ID</th>
-            <th>Patient Name</th>
-            <th>Treatment</th>
-          </tr>
-        </thead>
-        <tbody>
-          {unionData.length === 0 ? (
-            <tr><td colSpan="2" style={{ textAlign: "center", padding: "20px" }}>No data yet. Click the button above.</td></tr>
-          ) : (
-            unionData.map((row, index) => (
-              <tr key={index}>
-                <td>{row["patient_id"]}</td>
-                <td>{row.patient_name}</td>
-                <td>{row.treatment_name}</td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+        <section
+          style={{
+            background: "#fff",
+            border: "1px solid #e2e8f0",
+            borderRadius: "14px",
+            padding: "22px 24px",
+            boxShadow: "0 8px 24px rgba(15,23,42,0.04)",
+          }}
+        >
+          <div style={{ marginBottom: "22px" }}>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: "18px",
+                fontWeight: 700,
+                color: "#0f172a",
+              }}
+            >
+              Advanced SQL Reports
+            </h2>
+            <p
+              style={{ margin: "8px 0 0", color: "#475569", fontSize: "13px" }}
+            >
+              These reports use Cartesian product, UNION, and difference logic
+              to inspect hospital data.
+            </p>
+          </div>
 
-      <h3>3. SET DIFFERENCE </h3>
-      <p>Patients with Appointment but are UNPAID</p>
-      <table border="1" cellPadding="10" style={{ borderCollapse: "collapse", width: "100%" }}>
-        <thead>
-          <tr style={{ background: "#f0f0f0" }}>
-            <th>Patient ID</th>
-            <th>Patient Name</th>
-            <th>Bill Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {difference.length === 0 ? (
-            <tr><td style={{ textAlign: "center", padding: "20px" }}>No data yet. Click the button above.</td></tr>
-          ) : (
-            difference.map((row, index) => (
-              <tr key={index}>
-                <td>{row["patient_id"]}</td>
-                <td>{row.patient_name}</td>
-                <td>{row.status || "Unpaid"}</td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+          <div style={{ marginBottom: "28px" }}>
+            <h3
+              style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 700 }}
+            >
+              1. Cartesian Product
+            </h3>
+            <p style={{ margin: 0, color: "#475569", fontSize: "13px" }}>
+              Doctors × Patients (with condition)
+            </p>
+            <div style={{ overflowX: "auto", marginTop: "16px" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  tableLayout: "fixed",
+                }}
+              >
+                <thead>
+                  <tr>
+                    <th style={TH}>Doctor Name</th>
+                    <th style={TH}>Patient Name</th>
+                    <th style={TH}>Condition</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cartesian.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={3}
+                        style={{ ...TD, textAlign: "center", padding: "24px" }}
+                      >
+                        No data yet. Click Load Reports.
+                      </td>
+                    </tr>
+                  ) : (
+                    cartesian.map((row, index) => (
+                      <tr key={index}>
+                        <td style={TD}>{row.doctor_name}</td>
+                        <td style={TD}>{row.patient_name}</td>
+                        <td style={TD}>{row.medical_condition}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: "28px" }}>
+            <h3
+              style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 700 }}
+            >
+              2. UNION
+            </h3>
+            <p style={{ margin: 0, color: "#475569", fontSize: "13px" }}>
+              Patients who had Treatment
+            </p>
+            <div style={{ overflowX: "auto", marginTop: "16px" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  tableLayout: "fixed",
+                }}
+              >
+                <thead>
+                  <tr>
+                    <th style={TH}>Patient ID</th>
+                    <th style={TH}>Patient Name</th>
+                    <th style={TH}>Treatment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unionData.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={3}
+                        style={{ ...TD, textAlign: "center", padding: "24px" }}
+                      >
+                        No data yet. Click Load Reports.
+                      </td>
+                    </tr>
+                  ) : (
+                    unionData.map((row, index) => (
+                      <tr key={index}>
+                        <td style={TD}>{row.patient_id}</td>
+                        <td style={TD}>{row.patient_name}</td>
+                        <td style={TD}>{row.treatment_name}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div>
+            <h3
+              style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 700 }}
+            >
+              3. SET DIFFERENCE
+            </h3>
+            <p style={{ margin: 0, color: "#475569", fontSize: "13px" }}>
+              Patients with Appointment but unpaid bill status
+            </p>
+            <div style={{ overflowX: "auto", marginTop: "16px" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  tableLayout: "fixed",
+                }}
+              >
+                <thead>
+                  <tr>
+                    <th style={TH}>Patient ID</th>
+                    <th style={TH}>Patient Name</th>
+                    <th style={TH}>Bill Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {difference.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={3}
+                        style={{ ...TD, textAlign: "center", padding: "24px" }}
+                      >
+                        No data yet. Click Load Reports.
+                      </td>
+                    </tr>
+                  ) : (
+                    difference.map((row, index) => (
+                      <tr key={index}>
+                        <td style={TD}>{row.patient_id}</td>
+                        <td style={TD}>{row.patient_name}</td>
+                        <td style={TD}>{row.status || "Unpaid"}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }

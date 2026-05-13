@@ -1,0 +1,63 @@
+Final Project Brief
+Course: Database Management Systems 2
+Total Points: 200 (Individual)
+Deadline: Before final exam
+===========================
+
+Project Overview
+Students will design and implement a DBMS-driven information system. The project must demonstrate mastery of database design, SQL queries, relational algebra translation, and system development in any programming language or framework (Java, Python, PHP/Laravel, C#, etc.).
+
+Objectives
+- Apply relational algebra concepts (σ, π, ×, ∪, −, AND, OR, NOT) to real-world queries.  
+- Translate SQL queries into relational algebra (stepwise and compact).  
+- Design a normalized relational schema (up to 3NF).  
+- Implement a working system with CRUD operations and reporting features.  
+- Demonstrate set operations (UNION, DIFFERENCE) and complex conditions in queries.  
+
+System Requirements
+1. Database Design (40 pts)  
+   - ER diagram and relational schema with at least 6 tables or more. 
+   - Proper use of primary keys, foreign keys, and constraints.  
+   - Normalization up to 3NF.  
+
+2. SQL Queries (40 pts)  
+   - Write queries for:  
+     - Selection with AND, OR, NOT  
+     - Projection (specific attributes only)  
+     - Cartesian product conditions (instead of direct joins)  
+     - UNION and DIFFERENCE queries  
+   - Each query must be mapped to a real-world scenario (ex., “Find students enrolled in IT subjects but not CS subjects”).  
+
+3. Relational Algebra Translation (40 pts)  
+   - For each SQL query, show:  
+     1. SQL mapping  
+     2. Stepwise relational algebra syntax (intermediate relations)  
+     3. Compact relational algebra expression  
+
+4. System Implementation (50 pts)  
+   - Develop a working system in any language/framework.  
+   - Must include:  
+     - User interface for CRUD operations.  
+     - Query execution module (students must demonstrate SQL queries running on the system).  
+     - Reports generated from UNION, DIFFERENCE, and complex conditions.  
+
+5. Documentation & Presentation (30 pts)  
+   - User manual (how to use the system).  
+   - Technical documentation (database schema, queries, relational algebra).  
+   - 10–15 minute presentation/demo.  
+
+Deliverables
+- Source code of the system.  
+- Database schema and ER diagram.  
+- SQL queries with relational algebra mapping.  
+- Documentation (PDF).  
+- Final demo presentation.  
+
+===========================
+Grading Breakdown
+Database Design: 40 points 
+SQL Queries: 40 points 
+Relational Algebra Translation: 40 points 
+System Implementation: 50 points 
+Documentation & Presentation: 30 points 
+Total: 200

@@ -1,11 +1,24 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { URL } from "../API";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { sidebarStyles, navItems } from "../components/sideBar";
+import CreateBillModal from "../CRUD/CRUD_Bills/CreateBillModal";
+import ReadBillModal from "../CRUD/CRUD_Bills/ReadBillModal";
+import EditBillModal from "../CRUD/CRUD_Bills/EditBillModal";
 
 function Bills() {
-  const [difference, setDifference] = useState([]);
+  const [bills, setBills] = useState([]);
+
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState(new Set());
+
+  const [showAdd, setShowAdd] = useState(false);
+  const [readBill, setReadBill] = useState(null);
+  const [editBill, setEditBill] = useState(null);
+
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     fetchBills();
@@ -14,61 +27,568 @@ function Bills() {
   async function fetchBills() {
     try {
       setLoading(true);
-      const response = await fetch(`${URL}/api/reports/difference`);
-      if (!response.ok) throw new Error("Failed to fetch bills");
-      const data = await response.json();
-      setDifference(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error(err);
+
+      const res = await fetch(`${URL}/api/bills`);
+      const data = await res.json();
+
+      setBills(Array.isArray(data) ? data : []);
     } finally {
       setLoading(false);
     }
   }
 
-  if (loading) return <p style={{ padding: "20px" }}>Loading...</p>;
+  async function deleteBill(id) {
+    if (!window.confirm("Delete this bill?")) return;
+
+    await fetch(`${URL}/api/bills/${id}`, {
+      method: "DELETE",
+    });
+
+    fetchBills();
+  }
+
+  async function deleteSelected() {
+    if (
+      !selected.size ||
+      !window.confirm(`Delete ${selected.size} bill(s)?`)
+    )
+      return;
+
+    await Promise.all(
+      [...selected].map((id) =>
+        fetch(`${URL}/api/bills/${id}`, {
+          method: "DELETE",
+        }),
+      ),
+    );
+
+    setSelected(new Set());
+    fetchBills();
+  }
+
+  async function deleteAll() {
+    if (!bills.length || !window.confirm("Delete ALL bills?")) return;
+
+    await Promise.all(
+      bills.map((b) =>
+        fetch(`${URL}/api/bills/${b.bill_id}`, {
+          method: "DELETE",
+        }),
+      ),
+    );
+
+    setSelected(new Set());
+    fetchBills();
+  }
+
+  function toggleRow(id) {
+    setSelected((prev) => {
+      const s = new Set(prev);
+
+      s.has(id) ? s.delete(id) : s.add(id);
+
+      return s;
+    });
+  }
+
+  function toggleAll(e) {
+    setSelected(
+      e.target.checked
+        ? new Set(filtered.map((b) => b.bill_id))
+        : new Set(),
+    );
+  }
+
+  const filtered = bills.filter((b) =>
+    [b.patient_id, b.amount, b.status, b.bill_date]
+      .join(" ")
+      .toLowerCase()
+      .includes(search.toLowerCase()),
+  );
+
+  const TH = {
+    padding: "14px 18px",
+    textAlign: "left",
+    fontSize: "12px",
+    fontWeight: "600",
+    color: "#64748b",
+    borderBottom: "1px solid #e2e8f0",
+    background: "#f8fafc",
+    whiteSpace: "nowrap",
+  };
+
+  const TD = {
+    padding: "14px 18px",
+    fontSize: "13px",
+    color: "#334155",
+    borderBottom: "1px solid #e2e8f0",
+    verticalAlign: "middle",
+    whiteSpace: "nowrap",
+  };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Bills Management</h1>
-      <button onClick={() => navigate("/")}>Back to Dashboard</button>
+    <div
+      style={{
+        display: "flex",
+        fontFamily: "'Inter','Segoe UI',Arial,sans-serif",
+        background: "#f8fafc",
+        minHeight: "100vh",
+      }}
+    >
+      <aside style={sidebarStyles.sidebar}>
+        <div style={sidebarStyles.sidebarBrand}>
+          <div style={sidebarStyles.brandIcon}>H+</div>
 
-      <table border="1" cellPadding="10" style={{ width: "100%", marginTop: "20px", borderCollapse: "collapse" }}>
-        <thead>
-          <tr style={{ background: "#f4f4f4" }}>
-            <th>Patient ID</th>
-            <th>Patient Name</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {difference.map((row) => (
-            <tr key={row.patient_id}>
-              <td>{row.patient_id}</td>
-              <td>{row.patient_name}</td>
-              <td style={{ color: row.bill_id ? "red" : "gray" }}>
-                {row.status}
-              </td>
-              <td>
-                {row.bill_id ? (
-                  <>
-                    <button onClick={() => navigate(`/editBills/${row.bill_id}`)}>
-                      ✏️ Edit Bill
-                    </button>
-                  </>
-                ) : (
-                  <button 
-                    style={{ background: "#10b981", color: "white", border: "none", padding: "5px 10px", borderRadius: "4px", cursor: "pointer" }}
-                    onClick={() => navigate("/createBills", { state: { patient: row } })}
-                  >
-                    ➕ Create Bill
-                  </button>
-                )}
-              </td>
-            </tr>
+          <div>
+            <p style={sidebarStyles.brandName}>MediCare</p>
+            <p style={sidebarStyles.brandSub}>Hospital System</p>
+          </div>
+        </div>
+
+        <nav style={sidebarStyles.navSection}>
+          <span style={sidebarStyles.navLabel}>Main Menu</span>
+
+          {navItems.map((item) => (
+            <button
+              key={item.label}
+              style={{
+                ...sidebarStyles.navBtn,
+                ...(location.pathname === item.path
+                  ? sidebarStyles.navBtnActive
+                  : {}),
+              }}
+              onClick={() => navigate(item.path)}
+            >
+              <span style={sidebarStyles.navIcon}>{item.icon}</span>
+              {item.label}
+            </button>
           ))}
-        </tbody>
-      </table>
+        </nav>
+
+        <div style={sidebarStyles.sidebarFooter}>
+          <p style={sidebarStyles.footerText}>
+            Hospital Management
+            <br />
+            System v1.0
+          </p>
+        </div>
+      </aside>
+
+      <main
+        style={{
+          marginLeft: "220px",
+          padding: "32px 28px",
+          width: "100%",
+          boxSizing: "border-box",
+        }}
+      >
+        <div style={{ marginBottom: "24px" }}>
+          <h1
+            style={{
+              margin: "0 0 4px",
+              fontSize: "24px",
+              fontWeight: "700",
+              color: "#0f172a",
+            }}
+          >
+            Bills
+          </h1>
+
+          <p style={{ margin: 0, fontSize: "14px", color: "#64748b" }}>
+            Manage all registered bills
+          </p>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "18px",
+            gap: "10px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div
+            style={{
+              position: "relative",
+              flex: 1,
+              minWidth: "280px",
+              maxWidth: "420px",
+            }}
+          >
+            <span
+              style={{
+                position: "absolute",
+                left: "12px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "#94a3b8",
+                fontSize: "13px",
+              }}
+            >
+              🔍
+            </span>
+
+            <input
+              type="text"
+              placeholder="Search bills..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "10px 14px 10px 36px",
+                border: "1px solid #dbe2ea",
+                borderRadius: "8px",
+                fontSize: "13px",
+                outline: "none",
+                background: "#fff",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button
+              onClick={deleteAll}
+              disabled={!bills.length}
+              style={{
+                padding: "9px 14px",
+                borderRadius: "8px",
+                border: "1px solid #fecaca",
+                background: "#fff",
+                color: "#ef4444",
+                fontSize: "13px",
+                fontWeight: "600",
+                cursor: bills.length ? "pointer" : "not-allowed",
+                opacity: bills.length ? 1 : 0.5,
+              }}
+            >
+              🗑 Delete All
+            </button>
+
+            <button
+              onClick={() => setShowAdd(true)}
+              style={{
+                padding: "9px 14px",
+                borderRadius: "8px",
+                border: "none",
+                background: "#2563eb",
+                color: "#fff",
+                fontSize: "13px",
+                fontWeight: "600",
+                cursor: "pointer",
+              }}
+            >
+              ＋ Add Bill
+            </button>
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: "#fff",
+            border: "1px solid #e2e8f0",
+            borderRadius: "12px",
+            width: "100%",
+          }}
+        >
+          <div
+            style={{
+              padding: "16px 20px",
+              borderBottom: "1px solid #e2e8f0",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "15px",
+                fontWeight: "600",
+                color: "#0f172a",
+              }}
+            >
+              All Bills
+            </span>
+
+            <span style={{ fontSize: "12px", color: "#64748b" }}>
+              {filtered.length} record
+              {filtered.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+
+          {selected.size > 0 && (
+            <div
+              style={{
+                padding: "12px 20px",
+                background: "#eff6ff",
+                borderBottom: "1px solid #bfdbfe",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "13px",
+                  color: "#1e40af",
+                  fontWeight: "500",
+                }}
+              >
+                {selected.size} selected
+              </span>
+
+              <button
+                onClick={deleteSelected}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: "6px",
+                  border: "1px solid #fecaca",
+                  background: "#fff",
+                  color: "#ef4444",
+                  fontSize: "12px",
+                  cursor: "pointer",
+                }}
+              >
+                Delete Selected
+              </button>
+            </div>
+          )}
+
+          {loading ? (
+            <div
+              style={{
+                padding: "50px",
+                textAlign: "center",
+                color: "#94a3b8",
+              }}
+            >
+              Loading...
+            </div>
+          ) : (
+            <div style={{ width: "100%", overflowX: "auto" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  tableLayout: "fixed",
+                }}
+              >
+                <thead>
+                  <tr>
+                    <th
+                      style={{
+                        ...TH,
+                        width: "60px",
+                        textAlign: "center",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        onChange={toggleAll}
+                        checked={
+                          filtered.length > 0 &&
+                          filtered.every((b) =>
+                            selected.has(b.bill_id),
+                          )
+                        }
+                        style={{
+                          cursor: "pointer",
+                          accentColor: "#2563eb",
+                        }}
+                      />
+                    </th>
+
+                    <th style={{ ...TH, width: "80px" }}>ID</th>
+                    <th style={{ ...TH, width: "18%" }}>
+                      Patient ID
+                    </th>
+                    <th style={{ ...TH, width: "18%" }}>
+                      Amount
+                    </th>
+                    <th style={{ ...TH, width: "12%" }}>
+                      Status
+                    </th>
+                    <th style={{ ...TH, width: "22%" }}>
+                      Bill Date
+                    </th>
+                    <th style={{ ...TH, width: "18%" }}>
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        style={{
+                          padding: "40px",
+                          textAlign: "center",
+                          color: "#94a3b8",
+                        }}
+                      >
+                        No bills found.
+                      </td>
+                    </tr>
+                  ) : (
+                    filtered.map((b) => (
+                      <tr
+                        key={b.bill_id}
+                        style={{
+                          background: selected.has(b.bill_id)
+                            ? "#f8fbff"
+                            : "#fff",
+                        }}
+                      >
+                        <td
+                          style={{
+                            ...TD,
+                            textAlign: "center",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selected.has(b.bill_id)}
+                            onChange={() =>
+                              toggleRow(b.bill_id)
+                            }
+                            style={{
+                              cursor: "pointer",
+                              accentColor: "#2563eb",
+                            }}
+                          />
+                        </td>
+
+                        <td
+                          style={{
+                            ...TD,
+                            fontWeight: "600",
+                            color: "#64748b",
+                          }}
+                        >
+                          {b.bill_id}
+                        </td>
+
+                        <td
+                          style={{
+                            ...TD,
+                            fontWeight: "600",
+                            color: "#0f172a",
+                          }}
+                        >
+                          {b.patient_id}
+                        </td>
+
+                        <td style={TD}>{b.amount}</td>
+
+                        <td style={TD}>{b.status}</td>
+
+                        <td style={TD}>{b.bill_date}</td>
+
+                        <td style={TD}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              flexWrap: "nowrap",
+                            }}
+                          >
+                            <button
+                              onClick={() => setReadBill(b)}
+                              style={{
+                                padding: "7px 12px",
+                                borderRadius: "7px",
+                                border: "1px solid #dbe2ea",
+                                background: "#fff",
+                                color: "#334155",
+                                fontSize: "12px",
+                                fontWeight: "500",
+                                cursor: "pointer",
+                              }}
+                            >
+                              View
+                            </button>
+
+                            <button
+                              onClick={() => setEditBill(b)}
+                              style={{
+                                padding: "7px 12px",
+                                borderRadius: "7px",
+                                border: "1px solid #bfdbfe",
+                                background: "#eff6ff",
+                                color: "#2563eb",
+                                fontSize: "12px",
+                                fontWeight: "500",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                deleteBill(b.bill_id)
+                              }
+                              style={{
+                                padding: "7px 12px",
+                                borderRadius: "7px",
+                                border: "1px solid #fecaca",
+                                background: "#fef2f2",
+                                color: "#ef4444",
+                                fontSize: "12px",
+                                fontWeight: "500",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {showAdd && (
+        <CreateBillModal
+          onClose={() => setShowAdd(false)}
+          onSaved={() => {
+            setShowAdd(false);
+            fetchBills();
+          }}
+        />
+      )}
+
+      {readBill && (
+        <ReadBillModal
+          bill={readBill}
+          onClose={() => setReadBill(null)}
+          onEdit={() => {
+            setEditBill(readBill);
+            setReadBill(null);
+          }}
+        />
+      )}
+
+      {editBill && (
+        <EditBillModal
+          bill={editBill}
+          onClose={() => setEditBill(null)}
+          onSaved={() => {
+            setEditBill(null);
+            fetchBills();
+          }}
+        />
+      )}
     </div>
   );
 }

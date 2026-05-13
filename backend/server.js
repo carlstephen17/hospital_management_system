@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 // ------------------ SERVER ------------------ //
-app.listen(port, () => {
+app.listen(port, "0.0.0.0", () => {
   console.log(`🚀 Server running on http://localhost:${port}`);
 });
 
@@ -23,6 +23,7 @@ const db = mysql.createConnection({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
 });
+const dbPromise = db.promise();
 
 db.connect((err) => {
   if (err) {
@@ -55,27 +56,85 @@ app.get("/api/patients/:id", (req, res) => {
 });
 
 app.post("/api/patients", (req, res) => {
-  const { patient_name, phone, gender, address, condition, status } = req.body;
-  db.query(
-    "INSERT INTO patients (patient_name, phone, gender, address, `condition`, `status`) VALUES (?, ?, ?, ?, ?, ?)",
-    [patient_name, phone, gender, address, condition, status],
-    (err, result) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ error: err.message });
-      }
-      res.status(201).json({ patient_id: result.insertId });
-    },
-  );
+  const {
+    patient_name,
+    phone,
+    gender,
+    address,
+    medical_condition,
+    blood_type,
+    status,
+  } = req.body;
+
+  if (
+    !patient_name ||
+    !phone ||
+    !gender ||
+    !address ||
+    !medical_condition ||
+    !blood_type ||
+    !status
+  ) {
+    return res.status(400).json({
+      message: "All fields are required",
+    });
+  }
+
+  const sql = `
+    INSERT INTO patients
+    (
+      patient_name,
+      phone,
+      gender,
+      address,
+      medical_condition,
+      blood_type,
+      status
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  const values = [
+    patient_name,
+    phone,
+    gender,
+    address,
+    medical_condition,
+    blood_type,
+    status,
+  ];
+
+  db.query(sql, values, (err, result) => {
+    if (err) {
+      console.error("CREATE PATIENT ERROR:", err);
+
+      return res.status(500).json({
+        error: err.message,
+      });
+    }
+
+    res.status(201).json({
+      message: "Patient created successfully",
+      patient_id: result.insertId,
+    });
+  });
 });
 
 app.put("/api/patients/:id", (req, res) => {
   const { id } = req.params;
-  const { patient_name, phone, gender, address, condition, status } = req.body;
-  
+  const {
+    patient_name,
+    phone,
+    gender,
+    address,
+    medical_condition,
+    blood_type,
+    status,
+  } = req.body;
+
   let query = "UPDATE patients SET ";
   let params = [];
-  
+
   if (patient_name !== undefined) {
     query += "patient_name = ?, ";
     params.push(patient_name);
@@ -92,19 +151,23 @@ app.put("/api/patients/:id", (req, res) => {
     query += "address = ?, ";
     params.push(address || null);
   }
-  if (condition !== undefined) {
-    query += "`condition` = ?, ";
-    params.push(condition || null);
+  if (medical_condition !== undefined) {
+    query += "`medical_condition` = ?, ";
+    params.push(medical_condition || null);
+  }
+  if (blood_type !== undefined) {
+    query += "`blood_type` = ?, ";
+    params.push(blood_type || null);
   }
   if (status !== undefined) {
     query += "`status` = ?, ";
     params.push(status || null);
   }
-  
+
   query = query.slice(0, -2);
   query += " WHERE patient_id = ?";
   params.push(id);
-  
+
   db.query(query, params, (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: "Patient updated successfully" });
@@ -168,7 +231,6 @@ app.get("/api/patient/status", (req, res) => {
   });
 });
 
-
 // ------------------ DOCTOR CRUD ------------------ //
 app.get("/api/doctors", (req, res) => {
   db.query("SELECT * FROM doctors", (err, results) => {
@@ -192,10 +254,11 @@ app.get("/api/doctors/:id", (req, res) => {
 });
 
 app.post("/api/doctors", (req, res) => {
-  const { doctor_name, doctor_specialty } = req.body;
+  const { doctor_name, phone, doctor_specialty, department_id, email } =
+    req.body;
   db.query(
-    "INSERT INTO doctors (doctor_name, doctor_specialty) VALUES (?, ?)",
-    [doctor_name, doctor_specialty],
+    "INSERT INTO doctors (doctor_name, phone, doctor_specialty, department_id, email) VALUES (?, ?, ?, ?, ?)",
+    [doctor_name, phone, doctor_specialty, department_id, email],
     (err, result) => {
       if (err) return res.status(500).json({ error: err.message });
       res.status(201).json({ doctor_id: result.insertId });
@@ -205,10 +268,11 @@ app.post("/api/doctors", (req, res) => {
 
 app.put("/api/doctors/:id", (req, res) => {
   const { id } = req.params;
-  const { doctor_name, doctor_specialty } = req.body;
+  const { doctor_name, phone, doctor_specialty, department_id, email } =
+    req.body;
   db.query(
-    "UPDATE doctors SET doctor_name = ?, doctor_specialty = ? WHERE doctor_id = ?",
-    [doctor_name, doctor_specialty, id],
+    "UPDATE doctors SET doctor_name = ?, phone = ?, doctor_specialty = ?, department_id = ?, email = ? WHERE doctor_id = ?",
+    [doctor_name, phone, doctor_specialty, department_id, email, id],
     (err) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ message: "Doctor updated successfully" });
@@ -397,10 +461,11 @@ app.get("/api/appointments", (req, res) => {
 });
 
 app.post("/api/appointments", (req, res) => {
-  const { patient_id, doctor_id, appointment_date } = req.body;
+  const { patient_id, doctor_id, appointment_type, appointment_date, status } =
+    req.body;
   db.query(
-    "INSERT INTO appointments (patient_id, doctor_id, appointment_date) VALUES (?, ?, ?)",
-    [patient_id, doctor_id, appointment_date],
+    "INSERT INTO appointments (patient_id, doctor_id, appointment_type, appointment_date, status) VALUES (?, ?, ?, ?, ?)",
+    [patient_id, doctor_id, appointment_type, appointment_date, status],
     (err, result) => {
       if (err) return res.status(500).json({ error: err.message });
       res.status(201).json({ id: result.insertId });
@@ -410,30 +475,46 @@ app.post("/api/appointments", (req, res) => {
 
 app.put("/api/appointments/:id", (req, res) => {
   const { id } = req.params;
-  const { patient_id, doctor_id, appointment_date } = req.body;
-  
-  // Build dynamic query based on provided fields
+  const {
+    patient_id,
+    doctor_id,
+    appointment_type,
+    appointment_date,
+    status,
+  } = req.body;
+
   let query = "UPDATE appointments SET ";
   let params = [];
-  
-  if (doctor_id !== undefined) {
-    query += "doctor_id = ?, ";
-    params.push(doctor_id);
-  }
-  if (appointment_date !== undefined) {
-    query += "appointment_date = ?, ";
-    params.push(appointment_date);
-  }
+
   if (patient_id !== undefined && patient_id !== null) {
     query += "patient_id = ?, ";
     params.push(patient_id);
   }
-  
-  // Remove trailing comma and space
+
+  if (doctor_id !== undefined && doctor_id !== null) {
+    query += "doctor_id = ?, ";
+    params.push(doctor_id);
+  }
+
+  if (appointment_type !== undefined && appointment_type !== null) {
+    query += "appointment_type = ?, ";
+    params.push(appointment_type);
+  }
+
+  if (appointment_date !== undefined && appointment_date !== null) {
+    query += "appointment_date = ?, ";
+    params.push(appointment_date);
+  }
+
+  if (status !== undefined && status !== null) {
+    query += "status = ?, ";
+    params.push(status);
+  }
+
   query = query.slice(0, -2);
   query += " WHERE appointment_id = ?";
   params.push(id);
-  
+
   db.query(query, params, (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: "Appointment updated successfully" });
@@ -457,16 +538,17 @@ app.get("/api/bills", (req, res) => {
 });
 
 app.post("/api/bills", (req, res) => {
-  const { patient_id, amount, bill_date, status } = req.body;
+  const { patient_id, treatment_id, amount, bill_date, status } = req.body;
   const billStatus = status || "unpaid";
   db.query(
-    "INSERT INTO bills (patient_id, amount, bill_date, status) VALUES (?, ?, ?, ?)",
-    [patient_id, amount, bill_date, billStatus],
+    "INSERT INTO bills (patient_id, treatment_id, amount, bill_date, status) VALUES (?, ?, ?, ?, ?)",
+    [patient_id, treatment_id, amount, bill_date, billStatus],
     (err, result) => {
       if (err) return res.status(500).json({ error: err.message });
       res.status(201).json({
         id: result.insertId,
         patient_id,
+        treatment_id,
         amount,
         bill_date,
         status: billStatus,
@@ -477,12 +559,11 @@ app.post("/api/bills", (req, res) => {
 
 app.put("/api/bills/:id", (req, res) => {
   const { id } = req.params;
-  const { patient_id, amount, bill_date, status } = req.body;
-  
-  // Build dynamic query based on provided fields
+  const { patient_id, treatment_id, amount, bill_date, status } = req.body;
+
   let query = "UPDATE bills SET ";
   let params = [];
-  
+
   if (amount !== undefined) {
     query += "amount = ?, ";
     params.push(amount);
@@ -490,6 +571,10 @@ app.put("/api/bills/:id", (req, res) => {
   if (bill_date !== undefined) {
     query += "bill_date = ?, ";
     params.push(bill_date);
+  }
+  if (treatment_id !== undefined) {
+    query += "treatment_id = ?, ";
+    params.push(treatment_id);
   }
   if (status !== undefined) {
     query += "status = ?, ";
@@ -499,12 +584,11 @@ app.put("/api/bills/:id", (req, res) => {
     query += "patient_id = ?, ";
     params.push(patient_id);
   }
-  
-  // Remove trailing comma and space
+
   query = query.slice(0, -2);
   query += " WHERE bill_id = ?";
   params.push(id);
-  
+
   db.query(query, params, (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: "Bill updated successfully" });
@@ -523,10 +607,12 @@ app.delete("/api/bills/:id", (req, res) => {
 app.get("/api/reports/cartesian", (req, res) => {
   db.query(
     `
-    SELECT d.doctor_name, p.patient_name, p.condition 
-    FROM doctors d, patients p, appointments a 
-    WHERE d.doctor_id = a.doctor_id 
-      AND p.patient_id = a.patient_id
+    SELECT d.doctor_name,
+           p.patient_name,
+           p.medical_condition AS medical_condition
+    FROM doctors d
+    JOIN appointments a ON d.doctor_id = a.doctor_id
+    JOIN patients p ON p.patient_id = a.patient_id
   `,
     (err, results) => {
       if (err) return res.status(500).json({ error: err.message });
@@ -568,4 +654,107 @@ app.get("/api/reports/difference", (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
+});
+
+app.get("/api/analytics", async (req, res) => {
+  try {
+    const [[patientCount]] = await dbPromise.query(
+      "SELECT COUNT(*) AS total_patients FROM patients",
+    );
+
+    const [[doctorCount]] = await dbPromise.query(
+      "SELECT COUNT(*) AS total_doctors FROM doctors",
+    );
+
+    const [[appointmentCount]] = await dbPromise.query(
+      "SELECT COUNT(*) AS total_appointments FROM appointments",
+    );
+
+    const [[billSummary]] = await dbPromise.query(
+      `SELECT COUNT(*) AS total_bills,
+              COALESCE(SUM(amount), 0) AS total_amount,
+              SUM(CASE WHEN LOWER(status) = 'paid' THEN 1 ELSE 0 END) AS paid_bills,
+              SUM(CASE WHEN LOWER(status) = 'unpaid' THEN 1 ELSE 0 END) AS unpaid_bills
+       FROM bills`,
+    );
+
+    const [genderDistribution] = await dbPromise.query(
+      `SELECT COALESCE(NULLIF(TRIM(LOWER(gender)), ''), 'unknown') AS gender,
+              COUNT(*) AS count
+       FROM patients
+       GROUP BY gender
+       ORDER BY count DESC`,
+    );
+
+    const [statusDistribution] = await dbPromise.query(
+      `SELECT COALESCE(NULLIF(TRIM(LOWER(status)), ''), 'unknown') AS status,
+              COUNT(*) AS count
+       FROM patients
+       GROUP BY status
+       ORDER BY count DESC`,
+    );
+
+    const [[criticalCount]] = await dbPromise.query(
+      `SELECT COUNT(*) AS critical_patients
+       FROM patients
+       WHERE LOWER(status) = 'critical'
+          OR LOWER(medical_condition) LIKE '%critical%'`,
+    );
+
+    const [topConditions] = await dbPromise.query(
+      `SELECT COALESCE(NULLIF(TRIM(medical_condition), ''), 'Unknown') AS condition_name,
+              COUNT(*) AS count
+       FROM patients
+       GROUP BY medical_condition
+       ORDER BY count DESC
+       LIMIT 6`,
+    );
+
+    const [appointmentsByDoctor] = await dbPromise.query(
+      `SELECT d.doctor_name AS label,
+              COUNT(*) AS count
+       FROM appointments a
+       JOIN doctors d ON d.doctor_id = a.doctor_id
+       GROUP BY d.doctor_name
+       ORDER BY count DESC
+       LIMIT 6`,
+    );
+
+    const totalPatients = patientCount?.total_patients ?? 0;
+    const genderData = genderDistribution.map((entry) => {
+      const count = Number(entry.count ?? 0);
+      return {
+        gender: entry.gender,
+        count,
+        percentage: totalPatients ? Number(((count / totalPatients) * 100).toFixed(1)) : 0,
+      };
+    });
+
+    const statusData = statusDistribution.map((entry) => {
+      const count = Number(entry.count ?? 0);
+      return {
+        status: entry.status,
+        count,
+        percentage: totalPatients ? Number(((count / totalPatients) * 100).toFixed(1)) : 0,
+      };
+    });
+
+    res.json({
+      total_patients: Number(patientCount?.total_patients ?? 0),
+      total_doctors: Number(doctorCount?.total_doctors ?? 0),
+      total_appointments: Number(appointmentCount?.total_appointments ?? 0),
+      total_bills: Number(billSummary?.total_bills ?? 0),
+      total_amount: Number(billSummary?.total_amount ?? 0),
+      paid_bills: Number(billSummary?.paid_bills ?? 0),
+      unpaid_bills: Number(billSummary?.unpaid_bills ?? 0),
+      critical_patients: Number(criticalCount?.critical_patients ?? 0),
+      gender_distribution: genderData,
+      status_distribution: statusData,
+      top_conditions: topConditions,
+      appointments_by_doctor: appointmentsByDoctor,
+    });
+  } catch (err) {
+    console.error("Analytics error:", err);
+    res.status(500).json({ error: err.message });
+  }
 });

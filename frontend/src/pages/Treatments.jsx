@@ -1,33 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { URL } from "../API";
 import { useNavigate, useLocation } from "react-router-dom";
-import { sidebarStyles, navItems } from "../components/sideBar";
-import CreatePatientModal from "../CRUD/CRUD_Patients/CreatePatientModal";
-import ReadPatientModal from "../CRUD/CRUD_Patients/ReadPatientModal";
-import EditPatientModal from "../CRUD/CRUD_Patients/EditPatientModal";
-
-const genderBadge = (gender) => {
-  const g = gender?.toLowerCase();
-
-  if (g === "male") {
-    return {
-      background: "#dbeafe",
-      color: "#1d4ed8",
-    };
-  }
-
-  if (g === "female") {
-    return {
-      background: "#fce7f3",
-      color: "#9d174d",
-    };
-  }
-
-  return {
-    background: "#e0e7ff",
-    color: "#4338ca",
-  };
-};
+import { sidebarStyles, navItems } from "../components/SideBar";
+import CreateTreatmentModal from "../CRUD/CRUD_Treatments/CreateTreatmentModal";
+import EditTreatmentModal from "../CRUD/CRUD_Treatments/EditTreatmentModal";
+import ReadTreatmentModal from "../CRUD/CRUD_Treatments/ReadTreatmentModal";
 
 const TH = {
   padding: "14px 18px",
@@ -49,132 +26,88 @@ const TD = {
   whiteSpace: "nowrap",
 };
 
-export default function Patients() {
-  const [patients, setPatients] = useState([]);
+export default function Treatments() {
+  const [treatments, setTreatments] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(new Set());
 
   const [showAdd, setShowAdd] = useState(false);
-  const [readPatient, setReadPatient] = useState(null);
-  const [editPatient, setEditPatient] = useState(null);
+  const [viewTreatment, setViewTreatment] = useState(null);
+  const [editTreatment, setEditTreatment] = useState(null);
 
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    fetchPatients();
+    fetchAll();
   }, []);
 
-  async function fetchPatients() {
+  async function fetchAll() {
+    setLoading(true);
     try {
-      setLoading(true);
-
-      const res = await fetch(`${URL}/api/patients`);
-      const data = await res.json();
-
-      console.log("PATIENT DATA:", data);
-
-      setPatients(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Failed to fetch patients:", err);
+      const [tRes, dRes] = await Promise.all([
+        fetch(`${URL}/api/treatments`),
+        fetch(`${URL}/api/departments`),
+      ]);
+      const [tData, dData] = await Promise.all([tRes.json(), dRes.json()]);
+      setTreatments(Array.isArray(tData) ? tData : []);
+      setDepartments(Array.isArray(dData) ? dData : []);
     } finally {
       setLoading(false);
     }
   }
 
-  async function deletePatient(id) {
-    if (!window.confirm("Delete this patient?")) return;
-
-    try {
-      await fetch(`${URL}/api/patients/${id}`, {
-        method: "DELETE",
-      });
-
-      fetchPatients();
-    } catch (err) {
-      console.error("Delete failed:", err);
-    }
+  async function deleteTreatment(id) {
+    if (!window.confirm("Delete this treatment?")) return;
+    await fetch(`${URL}/api/treatments/${id}`, { method: "DELETE" });
+    fetchAll();
   }
 
   async function deleteSelected() {
-    if (
-      !selected.size ||
-      !window.confirm(`Delete ${selected.size} patient(s)?`)
-    ) {
-      return;
-    }
-
-    try {
-      await Promise.all(
-        [...selected].map((id) =>
-          fetch(`${URL}/api/patients/${id}`, {
-            method: "DELETE",
-          }),
-        ),
-      );
-
-      setSelected(new Set());
-      fetchPatients();
-    } catch (err) {
-      console.error("Bulk delete failed:", err);
-    }
+    if (!selected.size || !window.confirm(`Delete ${selected.size} treatment(s)?`)) return;
+    await Promise.all(
+      [...selected].map((id) => fetch(`${URL}/api/treatments/${id}`, { method: "DELETE" }))
+    );
+    setSelected(new Set());
+    fetchAll();
   }
 
   async function deleteAll() {
-    if (!patients.length || !window.confirm("Delete ALL patients?")) {
-      return;
-    }
-
-    try {
-      await Promise.all(
-        patients.map((p) =>
-          fetch(`${URL}/api/patients/${p.patient_id}`, {
-            method: "DELETE",
-          }),
-        ),
-      );
-
-      setSelected(new Set());
-      fetchPatients();
-    } catch (err) {
-      console.error("Delete all failed:", err);
-    }
+    if (!treatments.length || !window.confirm("Delete ALL treatments?")) return;
+    await Promise.all(
+      treatments.map((t) =>
+        fetch(`${URL}/api/treatments/${t.treatment_id}`, { method: "DELETE" })
+      )
+    );
+    setSelected(new Set());
+    fetchAll();
   }
 
   function toggleRow(id) {
     setSelected((prev) => {
       const s = new Set(prev);
-
-      if (s.has(id)) {
-        s.delete(id);
-      } else {
-        s.add(id);
-      }
-
+      s.has(id) ? s.delete(id) : s.add(id);
       return s;
     });
   }
 
   function toggleAll(e) {
     setSelected(
-      e.target.checked ? new Set(filtered.map((p) => p.patient_id)) : new Set(),
+      e.target.checked ? new Set(filtered.map((t) => t.treatment_id)) : new Set()
     );
   }
 
-  const filtered = patients.filter((p) =>
-    [
-      p.patient_name,
-      p.phone,
-      p.address,
-      p.gender,
-      p.medical_condition,
-      p.blood_type,
-      p.status,
-    ]
+  const getDeptName = (dept_id) =>
+    departments.find((d) => String(d.department_id) === String(dept_id))
+      ?.department_name || "—";
+
+  const filtered = treatments.filter((t) =>
+    [t.treatment_name, t.description, t.cost, getDeptName(t.department_id)]
       .join(" ")
       .toLowerCase()
-      .includes(search.toLowerCase()),
+      .includes(search.toLowerCase())
   );
 
   return (
@@ -186,38 +119,31 @@ export default function Patients() {
         minHeight: "100vh",
       }}
     >
-      {/* SIDEBAR */}
+      {/* Sidebar */}
       <aside style={sidebarStyles.sidebar}>
         <div style={sidebarStyles.sidebarBrand}>
           <div style={sidebarStyles.brandIcon}>H+</div>
-
           <div>
             <p style={sidebarStyles.brandName}>MediCare</p>
             <p style={sidebarStyles.brandSub}>Hospital System</p>
           </div>
         </div>
-
         <nav style={sidebarStyles.navSection}>
           <span style={sidebarStyles.navLabel}>Main Menu</span>
-
           {navItems.map((item) => (
             <button
               key={item.label}
               style={{
                 ...sidebarStyles.navBtn,
-                ...(location.pathname === item.path
-                  ? sidebarStyles.navBtnActive
-                  : {}),
+                ...(location.pathname === item.path ? sidebarStyles.navBtnActive : {}),
               }}
               onClick={() => navigate(item.path)}
             >
               <span style={sidebarStyles.navIcon}>{item.icon}</span>
-
               {item.label}
             </button>
           ))}
         </nav>
-
         <div style={sidebarStyles.sidebarFooter}>
           <p style={sidebarStyles.footerText}>
             Hospital Management
@@ -227,7 +153,7 @@ export default function Patients() {
         </div>
       </aside>
 
-      {/* MAIN */}
+      {/* Main content */}
       <main
         style={{
           marginLeft: "220px",
@@ -236,7 +162,6 @@ export default function Patients() {
           boxSizing: "border-box",
         }}
       >
-        {/* HEADER */}
         <div style={{ marginBottom: "24px" }}>
           <h1
             style={{
@@ -246,21 +171,14 @@ export default function Patients() {
               color: "#0f172a",
             }}
           >
-            Patients
+            Treatments
           </h1>
-
-          <p
-            style={{
-              margin: 0,
-              fontSize: "14px",
-              color: "#64748b",
-            }}
-          >
-            Manage all registered patients
+          <p style={{ margin: 0, fontSize: "14px", color: "#64748b" }}>
+            Manage all registered Treatments
           </p>
         </div>
 
-        {/* TOP BAR */}
+        {/* Toolbar */}
         <div
           style={{
             display: "flex",
@@ -271,7 +189,6 @@ export default function Patients() {
             flexWrap: "wrap",
           }}
         >
-          {/* SEARCH */}
           <div
             style={{
               position: "relative",
@@ -292,10 +209,9 @@ export default function Patients() {
             >
               🔍
             </span>
-
             <input
               type="text"
-              placeholder="Search patients..."
+              placeholder="Search treatments..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{
@@ -310,12 +226,10 @@ export default function Patients() {
               }}
             />
           </div>
-
-          {/* ACTION BUTTONS */}
           <div style={{ display: "flex", gap: "8px" }}>
             <button
               onClick={deleteAll}
-              disabled={!patients.length}
+              disabled={!treatments.length}
               style={{
                 padding: "9px 14px",
                 borderRadius: "8px",
@@ -324,13 +238,12 @@ export default function Patients() {
                 color: "#ef4444",
                 fontSize: "13px",
                 fontWeight: "600",
-                cursor: patients.length ? "pointer" : "not-allowed",
-                opacity: patients.length ? 1 : 0.5,
+                cursor: treatments.length ? "pointer" : "not-allowed",
+                opacity: treatments.length ? 1 : 0.5,
               }}
             >
               🗑 Delete All
             </button>
-
             <button
               onClick={() => setShowAdd(true)}
               style={{
@@ -344,12 +257,12 @@ export default function Patients() {
                 cursor: "pointer",
               }}
             >
-              ＋ Add Patient
+              ＋ Add Treatment
             </button>
           </div>
         </div>
 
-        {/* TABLE CARD */}
+        {/* Table card */}
         <div
           style={{
             background: "#fff",
@@ -358,7 +271,6 @@ export default function Patients() {
             width: "100%",
           }}
         >
-          {/* CARD HEADER */}
           <div
             style={{
               padding: "16px 20px",
@@ -368,28 +280,14 @@ export default function Patients() {
               alignItems: "center",
             }}
           >
-            <span
-              style={{
-                fontSize: "15px",
-                fontWeight: "600",
-                color: "#0f172a",
-              }}
-            >
-              All Patients
+            <span style={{ fontSize: "15px", fontWeight: "600", color: "#0f172a" }}>
+              All Treatments
             </span>
-
-            <span
-              style={{
-                fontSize: "12px",
-                color: "#64748b",
-              }}
-            >
-              {filtered.length} record
-              {filtered.length !== 1 ? "s" : ""}
+            <span style={{ fontSize: "12px", color: "#64748b" }}>
+              {filtered.length} record{filtered.length !== 1 ? "s" : ""}
             </span>
           </div>
 
-          {/* SELECTED BAR */}
           {selected.size > 0 && (
             <div
               style={{
@@ -401,16 +299,9 @@ export default function Patients() {
                 justifyContent: "space-between",
               }}
             >
-              <span
-                style={{
-                  fontSize: "13px",
-                  color: "#1e40af",
-                  fontWeight: "500",
-                }}
-              >
+              <span style={{ fontSize: "13px", color: "#1e40af", fontWeight: "500" }}>
                 {selected.size} selected
               </span>
-
               <button
                 onClick={deleteSelected}
                 style={{
@@ -428,24 +319,12 @@ export default function Patients() {
             </div>
           )}
 
-          {/* TABLE */}
           {loading ? (
-            <div
-              style={{
-                padding: "50px",
-                textAlign: "center",
-                color: "#94a3b8",
-              }}
-            >
+            <div style={{ padding: "50px", textAlign: "center", color: "#94a3b8" }}>
               Loading...
             </div>
           ) : (
-            <div
-              style={{
-                width: "100%",
-                overflowX: "auto",
-              }}
-            >
+            <div style={{ width: "100%", overflowX: "auto" }}>
               <table
                 style={{
                   width: "100%",
@@ -455,150 +334,74 @@ export default function Patients() {
               >
                 <thead>
                   <tr>
-                    <th
-                      style={{
-                        ...TH,
-                        width: "60px",
-                        textAlign: "center",
-                      }}
-                    >
+                    <th style={{ ...TH, width: "60px", textAlign: "center" }}>
                       <input
                         type="checkbox"
                         onChange={toggleAll}
                         checked={
                           filtered.length > 0 &&
-                          filtered.every((p) => selected.has(p.patient_id))
+                          filtered.every((t) => selected.has(t.treatment_id))
                         }
-                        style={{
-                          cursor: "pointer",
-                          accentColor: "#2563eb",
-                        }}
+                        style={{ cursor: "pointer", accentColor: "#2563eb" }}
                       />
                     </th>
-
-                    <th style={{ ...TH, width: "80px" }}>ID</th>
-                    <th style={{ ...TH, width: "18%" }}>Name</th>
-                    <th style={{ ...TH, width: "12%" }}>Phone</th>
-                    <th style={{ ...TH, width: "10%" }}>Gender</th>
-                    <th style={{ ...TH, width: "18%" }}>Address</th>
-                    <th style={{ ...TH, width: "20%" }}>Condition</th>
-                    <th style={{ ...TH, width: "10%" }}>Blood Type</th>
-                    <th style={{ ...TH, width: "10%" }}>Status</th>
+                    <th style={{ ...TH, width: "70px" }}>ID</th>
+                    <th style={{ ...TH, width: "22%" }}>Treatment Name</th>
+                    <th style={{ ...TH, width: "28%" }}>Description</th>
+                    <th style={{ ...TH, width: "12%" }}>Cost</th>
+                    <th style={{ ...TH, width: "18%" }}>Department</th>
                     <th style={{ ...TH, width: "20%" }}>Actions</th>
                   </tr>
                 </thead>
-
                 <tbody>
                   {filtered.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={10}
-                        style={{
-                          padding: "40px",
-                          textAlign: "center",
-                          color: "#94a3b8",
-                        }}
+                        colSpan={7}
+                        style={{ padding: "40px", textAlign: "center", color: "#94a3b8" }}
                       >
-                        No patients found.
+                        No treatments found.
                       </td>
                     </tr>
                   ) : (
-                    filtered.map((p) => (
+                    filtered.map((t) => (
                       <tr
-                        key={p.patient_id}
+                        key={t.treatment_id}
                         style={{
-                          background: selected.has(p.patient_id)
-                            ? "#f8fbff"
-                            : "#fff",
+                          background: selected.has(t.treatment_id) ? "#f8fbff" : "#fff",
                         }}
                       >
-                        {/* CHECKBOX */}
-                        <td
-                          style={{
-                            ...TD,
-                            textAlign: "center",
-                          }}
-                        >
+                        <td style={{ ...TD, textAlign: "center" }}>
                           <input
                             type="checkbox"
-                            checked={selected.has(p.patient_id)}
-                            onChange={() => toggleRow(p.patient_id)}
-                            style={{
-                              cursor: "pointer",
-                              accentColor: "#2563eb",
-                            }}
+                            checked={selected.has(t.treatment_id)}
+                            onChange={() => toggleRow(t.treatment_id)}
+                            style={{ cursor: "pointer", accentColor: "#2563eb" }}
                           />
                         </td>
-
-                        {/* ID */}
+                        <td style={{ ...TD, fontWeight: "600", color: "#64748b" }}>
+                          {t.treatment_id}
+                        </td>
+                        <td style={{ ...TD, fontWeight: "600", color: "#0f172a" }}>
+                          {t.treatment_name}
+                        </td>
                         <td
                           style={{
                             ...TD,
-                            fontWeight: "600",
-                            color: "#64748b",
+                            whiteSpace: "normal",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            maxWidth: "260px",
                           }}
                         >
-                          {p.patient_id}
+                          {t.description || "—"}
                         </td>
-
-                        {/* NAME */}
-                        <td
-                          style={{
-                            ...TD,
-                            fontWeight: "600",
-                            color: "#0f172a",
-                          }}
-                        >
-                          {p.patient_name}
+                        <td style={{ ...TD, color: "#16a34a", fontWeight: "600" }}>
+                          {t.cost
+                            ? `₱ ${Number(t.cost).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                            : "—"}
                         </td>
-
-                        {/* PHONE */}
-                        <td style={TD}>{p.phone || "-"}</td>
-
-                        {/* GENDER */}
-                        <td style={TD}>
-                          <span
-                            style={{
-                              ...genderBadge(p.gender),
-                              padding: "5px 10px",
-                              borderRadius: "999px",
-                              fontSize: "12px",
-                              fontWeight: "600",
-                              display: "inline-block",
-                              textTransform: "capitalize",
-                            }}
-                          >
-                            {p.gender || "-"}
-                          </span>
-                        </td>
-
-                        {/* ADDRESS */}
-                        <td style={TD}>{p.address || "-"}</td>
-
-                        {/* CONDITION */}
-                        <td style={TD}>{p.medical_condition || "-"}</td>
-
-                        {/* BLOOD TYPE */}
-                        <td style={TD}>
-                          <span
-                            style={{
-                              padding: "4px 10px",
-                              borderRadius: "999px",
-                              background: "#fee2e2",
-                              color: "#b91c1c",
-                              fontWeight: "700",
-                              fontSize: "12px",
-                              display: "inline-block",
-                            }}
-                          >
-                            {p.blood_type || "-"}
-                          </span>
-                        </td>
-
-                        {/* STATUS */}
-                        <td style={TD}>{p.status || "-"}</td>
-
-                        {/* ACTIONS */}
+                        <td style={TD}>{getDeptName(t.department_id)}</td>
                         <td style={TD}>
                           <div
                             style={{
@@ -608,9 +411,8 @@ export default function Patients() {
                               flexWrap: "nowrap",
                             }}
                           >
-                            {/* VIEW */}
                             <button
-                              onClick={() => setReadPatient(p)}
+                              onClick={() => setViewTreatment(t)}
                               style={{
                                 padding: "7px 12px",
                                 borderRadius: "7px",
@@ -624,10 +426,8 @@ export default function Patients() {
                             >
                               View
                             </button>
-
-                            {/* EDIT */}
                             <button
-                              onClick={() => setEditPatient(p)}
+                              onClick={() => setEditTreatment(t)}
                               style={{
                                 padding: "7px 12px",
                                 borderRadius: "7px",
@@ -641,10 +441,8 @@ export default function Patients() {
                             >
                               Edit
                             </button>
-
-                            {/* DELETE */}
                             <button
-                              onClick={() => deletePatient(p.patient_id)}
+                              onClick={() => deleteTreatment(t.treatment_id)}
                               style={{
                                 padding: "7px 12px",
                                 borderRadius: "7px",
@@ -670,37 +468,34 @@ export default function Patients() {
         </div>
       </main>
 
-      {/* CREATE MODAL */}
+      {/* Modals */}
       {showAdd && (
-        <CreatePatientModal
+        <CreateTreatmentModal
           onClose={() => setShowAdd(false)}
           onSaved={() => {
             setShowAdd(false);
-            fetchPatients();
+            fetchAll();
           }}
         />
       )}
-
-      {/* READ MODAL */}
-      {readPatient && (
-        <ReadPatientModal
-          patient={readPatient}
-          onClose={() => setReadPatient(null)}
+      {viewTreatment && (
+        <ReadTreatmentModal
+          treatment={viewTreatment}
+          departments={departments}
+          onClose={() => setViewTreatment(null)}
           onEdit={() => {
-            setEditPatient(readPatient);
-            setReadPatient(null);
+            setEditTreatment(viewTreatment);
+            setViewTreatment(null);
           }}
         />
       )}
-
-      {/* EDIT MODAL */}
-      {editPatient && (
-        <EditPatientModal
-          patient={editPatient}
-          onClose={() => setEditPatient(null)}
+      {editTreatment && (
+        <EditTreatmentModal
+          treatment={editTreatment}
+          onClose={() => setEditTreatment(null)}
           onSaved={() => {
-            setEditPatient(null);
-            fetchPatients();
+            setEditTreatment(null);
+            fetchAll();
           }}
         />
       )}

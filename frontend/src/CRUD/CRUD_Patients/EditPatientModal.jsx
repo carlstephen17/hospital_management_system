@@ -1,53 +1,129 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { URL } from "../../API";
-import { modalStyles as ms } from "../../components/SideBar";
+import { modalStyles as ms, MODAL_CSS } from "../../components/SideBar";
 
 function Field({ label, required, children }) {
   return (
-    <div style={ms.formGroup}>
+    <div style={ms.fieldWrap}>
       <label style={ms.label}>
         {label}
-        {required && (
-          <span style={{ color: "#ef4444", marginLeft: "2px" }}>*</span>
-        )}
+        {required && <span style={ms.requiredDot}>*</span>}
       </label>
       {children}
     </div>
   );
 }
 
-export default function EditPatientModal({ patient, onClose, onSaved }) {
+export default function EditPatientModal({
+  patient,
+  onClose,
+  onSaved,
+}) {
   const [form, setForm] = useState({
-    patient_name: patient.patient_name || "",
-    phone: patient.phone || "",
-    gender: patient.gender || "",
-    dob: patient.dob || "",
-    blood_type: patient.blood_type || "",
-    address: patient.address || "",
-    notes: patient.notes || "",
+    patient_name: "",
+    phone: "",
+    gender: "",
+    blood_type: "",
+    medical_condition: "",
+    status: "",
+    address: "",
   });
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  // LOAD PATIENT DATA
+  useEffect(() => {
+    if (!patient) return;
 
+    setForm({
+      patient_name: patient.patient_name || "",
+      phone: patient.phone || "",
+      gender: patient.gender || "",
+      blood_type: patient.blood_type || "",
+      medical_condition:
+        patient.medical_condition || "",
+      status: patient.status || "",
+      address: patient.address || "",
+    });
+  }, [patient]);
+
+  // HANDLE CHANGE
+  const set = (key) => (e) =>
+    setForm((prev) => ({
+      ...prev,
+      [key]: e.target.value,
+    }));
+
+  // SAVE
   async function handleSave() {
-    const { patient_name, phone, gender, address } = form;
-    if (!patient_name || !phone || !gender || !address) {
-      setError("Name, Phone, Gender, and Address are required.");
+    const {
+      patient_name,
+      phone,
+      gender,
+      blood_type,
+      medical_condition,
+      status,
+      address,
+    } = form;
+
+    if (
+      !patient_name.trim() ||
+      !phone.trim() ||
+      !gender ||
+      !blood_type ||
+      !medical_condition.trim() ||
+      !status ||
+      !address.trim()
+    ) {
+      setError("All fields are required.");
       return;
     }
-    setSaving(true);
-    setError("");
+
     try {
-      const res = await fetch(`${URL}/api/patients/${patient.patient_id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) throw new Error("Failed to update patient");
-      onSaved();
+      setSaving(true);
+      setError("");
+
+      const payload = {
+        patient_name: patient_name.trim(),
+        phone: phone.trim(),
+        gender,
+        blood_type,
+        medical_condition:
+          medical_condition.trim(),
+        status,
+        address: address.trim(),
+      };
+
+      const res = await fetch(
+        `${URL}/api/patients/${patient.patient_id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      let data = {};
+
+      try {
+        data = await res.json();
+      } catch (_) {}
+
+      if (!res.ok) {
+        throw new Error(
+          data.message ||
+            "Failed to update patient",
+        );
+      }
+
+      if (onSaved) await onSaved(data);
+
+      onClose();
     } catch (err) {
+      console.error(err);
       setError(err.message);
     } finally {
       setSaving(false);
@@ -55,104 +131,238 @@ export default function EditPatientModal({ patient, onClose, onSaved }) {
   }
 
   return (
-    <div
-      style={ms.overlay}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div style={ms.modal}>
-        <div style={ms.header}>
-          <span style={ms.title}>Edit Patient</span>
-          <button style={ms.closeBtn} onClick={onClose}>
-            ✕
-          </button>
-        </div>
-        <div style={ms.body}>
-          {error && <div style={ms.errBox}>⚠ {error}</div>}
-          <div style={ms.grid2}>
-            <Field label="Full Name" required>
-              <input
-                style={ms.input}
-                value={form.patient_name}
-                onChange={set("patient_name")}
-              />
-            </Field>
-            <Field label="Phone" required>
-              <input
-                style={ms.input}
-                value={form.phone}
-                onChange={set("phone")}
-              />
-            </Field>
+    <>
+      <style>{MODAL_CSS}</style>
+
+      <div
+        style={ms.overlay}
+        onClick={(e) =>
+          e.target === e.currentTarget &&
+          onClose()
+        }
+      >
+        <div
+          className="pm-modal"
+          style={ms.modal}
+        >
+          {/* HEADER */}
+          <div style={ms.header}>
+            <div style={ms.titleRow}>
+              <div style={ms.titleIcon}>
+                ✏️
+              </div>
+
+              <h2 style={ms.title}>
+                Edit Patient
+              </h2>
+            </div>
+
+            <button
+              className="pm-close"
+              style={ms.closeBtn}
+              onClick={onClose}
+            >
+              ✕
+            </button>
           </div>
-          <div style={ms.grid2}>
-            <Field label="Gender" required>
-              <select
-                style={ms.select}
-                value={form.gender}
-                onChange={set("gender")}
+
+          {/* BODY */}
+          <div style={ms.body}>
+            {error && (
+              <div style={ms.errBox}>
+                <span>⚠</span> {error}
+              </div>
+            )}
+
+            {/* Row 1 */}
+            <div style={ms.row}>
+              <Field
+                label="Full Name"
+                required
               >
-                <option value="">Select</option>
-                <option>Male</option>
-                <option>Female</option>
-                <option>Other</option>
-              </select>
-            </Field>
-            <Field label="Date of Birth">
-              <input
-                style={ms.input}
-                type="date"
-                value={form.dob}
-                onChange={set("dob")}
-              />
-            </Field>
-          </div>
-          <div style={ms.grid2}>
-            <Field label="Blood Type">
-              <select
-                style={ms.select}
-                value={form.blood_type}
-                onChange={set("blood_type")}
+                <input
+                  className="pm-input"
+                  style={ms.input}
+                  value={form.patient_name}
+                  onChange={set(
+                    "patient_name",
+                  )}
+                  placeholder="e.g. Maria Santos"
+                />
+              </Field>
+
+              <Field
+                label="Phone"
+                required
               >
-                <option value="">Select</option>
-                {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((b) => (
-                  <option key={b}>{b}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Address" required>
-              <input
-                style={ms.input}
-                value={form.address}
-                onChange={set("address")}
-              />
-            </Field>
+                <input
+                  className="pm-input"
+                  style={ms.input}
+                  value={form.phone}
+                  onChange={set("phone")}
+                  placeholder="+63 912 345 6789"
+                />
+              </Field>
+            </div>
+
+            {/* Row 2 */}
+            <div style={ms.row}>
+              <Field
+                label="Gender"
+                required
+              >
+                <select
+                  className="pm-input"
+                  style={ms.input}
+                  value={form.gender}
+                  onChange={set("gender")}
+                >
+                  <option value="">
+                    Select gender
+                  </option>
+
+                  <option value="Male">
+                    Male
+                  </option>
+
+                  <option value="Female">
+                    Female
+                  </option>
+                </select>
+              </Field>
+
+              <Field
+                label="Blood Type"
+                required
+              >
+                <select
+                  className="pm-input"
+                  style={ms.input}
+                  value={form.blood_type}
+                  onChange={set(
+                    "blood_type",
+                  )}
+                >
+                  <option value="">
+                    Select type
+                  </option>
+
+                  {[
+                    "A+",
+                    "A-",
+                    "B+",
+                    "B-",
+                    "AB+",
+                    "AB-",
+                    "O+",
+                    "O-",
+                  ].map((t) => (
+                    <option
+                      key={t}
+                      value={t}
+                    >
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+
+            {/* Row 3 */}
+            <div style={ms.row}>
+              <Field
+                label="Medical Condition"
+                required
+              >
+                <input
+                  className="pm-input"
+                  style={ms.input}
+                  value={
+                    form.medical_condition
+                  }
+                  onChange={set(
+                    "medical_condition",
+                  )}
+                  placeholder="e.g. Hypertension"
+                />
+              </Field>
+
+              <Field
+                label="Status"
+                required
+              >
+                <select
+                  className="pm-input"
+                  style={ms.input}
+                  value={form.status}
+                  onChange={set("status")}
+                >
+                  <option value="">
+                    Select status
+                  </option>
+
+                  {[
+                    "Admitted",
+                    "Discharged",
+                    "Deceased",
+                    "Critical",
+                    "Recovered",
+                    "Inactive",
+                  ].map((s) => (
+                    <option
+                      key={s}
+                      value={s}
+                    >
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+
+            {/* ADDRESS */}
+            <div style={ms.fullRow}>
+              <Field
+                label="Address"
+                required
+              >
+                <input
+                  className="pm-input"
+                  style={ms.input}
+                  value={form.address}
+                  onChange={set("address")}
+                  placeholder="Street, City, Province"
+                />
+              </Field>
+            </div>
           </div>
-          <Field label="Medical Notes">
-            <textarea
-              style={{ ...ms.input, resize: "none" }}
-              rows={3}
-              value={form.notes}
-              onChange={set("notes")}
-            />
-          </Field>
-        </div>
-        <div style={ms.footer}>
-          <button style={ms.cancelBtn} onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            style={{
-              ...ms.saveBtn,
-              opacity: saving ? 0.7 : 1,
-              cursor: saving ? "not-allowed" : "pointer",
-            }}
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saving ? "Saving…" : "Save Changes"}
-          </button>
+
+          {/* FOOTER */}
+          <div style={ms.footer}>
+            <button
+              className="pm-cancel"
+              style={ms.cancelBtn}
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+
+            <button
+              className="pm-save"
+              style={{
+                ...ms.saveBtn,
+                opacity: saving ? 0.6 : 1,
+              }}
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving
+                ? "Saving…"
+                : "Save Changes"}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
