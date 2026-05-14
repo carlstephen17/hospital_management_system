@@ -5,6 +5,7 @@ import { sidebarStyles, navItems } from "../components/sideBar";
 import CreateDoctorModal from "../CRUD/CRUD_Doctors/CreateDoctorModal";
 import ReadDoctorModal from "../CRUD/CRUD_Doctors/ReadDoctorModal";
 import EditDoctorModal from "../CRUD/CRUD_Doctors/EditDoctorModal";
+import { FaEye, FaPen, FaTrash } from "react-icons/fa";
 
 const TH = {
   padding: "14px 18px",
@@ -30,6 +31,8 @@ export default function Doctors() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(new Set());
+  const [sortBy, setSortBy] = useState("doctor_id");
+  const [sortOrder, setSortOrder] = useState("asc");
   const [showAdd, setShowAdd] = useState(false);
   const [readDoc, setReadDoc] = useState(null);
   const [editDoc, setEditDoc] = useState(null);
@@ -80,11 +83,7 @@ export default function Doctors() {
 
   async function deleteAll() {
     if (!doctors.length || !window.confirm("Delete ALL doctors?")) return;
-    await Promise.all(
-      doctors.map((d) =>
-        fetch(`${URL}/api/doctors/${d.doctor_id}`, { method: "DELETE" }),
-      ),
-    );
+    await fetch(`${URL}/api/deleteAllDoctors`, { method: "DELETE" });
     setSelected(new Set());
     fetchDoctors();
   }
@@ -98,7 +97,7 @@ export default function Doctors() {
   }
   function toggleAll(e) {
     setSelected(
-      e.target.checked ? new Set(filtered.map((d) => d.doctor_id)) : new Set(),
+      e.target.checked ? new Set(sorted.map((d) => d.doctor_id)) : new Set(),
     );
   }
 
@@ -108,6 +107,22 @@ export default function Doctors() {
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
+
+  const sorted = [...filtered].sort((a, b) => {
+    let aVal = a[sortBy];
+    let bVal = b[sortBy];
+
+    if (sortBy === "doctor_id") {
+      aVal = Number(aVal);
+      bVal = Number(bVal);
+    }
+
+    if (sortOrder === "asc") {
+      return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+    } else {
+      return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+    }
+  });
 
   return (
     <div
@@ -283,7 +298,7 @@ export default function Doctors() {
               All Doctors
             </span>
             <span style={{ fontSize: "12px", color: "#64748b" }}>
-              {filtered.length} record{filtered.length !== 1 ? "s" : ""}
+              {sorted.length} record{sorted.length !== 1 ? "s" : ""}
             </span>
           </div>
 
@@ -346,14 +361,14 @@ export default function Doctors() {
                         type="checkbox"
                         onChange={toggleAll}
                         checked={
-                          filtered.length > 0 &&
-                          filtered.every((d) => selected.has(d.doctor_id))
+                          sorted.length > 0 &&
+                          sorted.every((d) => selected.has(d.doctor_id))
                         }
                         style={{ cursor: "pointer", accentColor: "#2563eb" }}
                       />
                     </th>
-                    <th style={{ ...TH, width: "80px" }}>ID</th>
-                    <th style={{ ...TH, width: "18%" }}>Name</th>
+                    <th style={{ ...TH, width: "80px", cursor: "pointer" }} onClick={() => { setSortBy('doctor_id'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>ID {sortBy === 'doctor_id' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</th>
+                    <th style={{ ...TH, width: "18%", cursor: "pointer" }} onClick={() => { setSortBy('doctor_name'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}>Name {sortBy === 'doctor_name' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</th>
                     <th style={{ ...TH, width: "16%" }}>Phone</th>
                     <th style={{ ...TH, width: "18%" }}>Specialization</th>
                     <th style={{ ...TH, width: "12%" }}>Department</th>
@@ -362,7 +377,7 @@ export default function Doctors() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.length === 0 ? (
+                  {sorted.length === 0 ? (
                     <tr>
                       <td
                         colSpan={8}
@@ -376,7 +391,7 @@ export default function Doctors() {
                       </td>
                     </tr>
                   ) : (
-                    filtered.map((d) => (
+                    sorted.map((d) => (
                       <tr
                         key={d.doctor_id}
                         style={{
@@ -426,13 +441,16 @@ export default function Doctors() {
                                 borderRadius: "7px",
                                 border: "1px solid #dbe2ea",
                                 background: "#fff",
-                                color: "#334155",
+                                color: "#3b82f6",
                                 fontSize: "12px",
                                 fontWeight: "500",
                                 cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
                               }}
                             >
-                              View
+                              <FaEye /> View
                             </button>
                             <button
                               onClick={() => setEditDoc(d)}
@@ -441,13 +459,16 @@ export default function Doctors() {
                                 borderRadius: "7px",
                                 border: "1px solid #bfdbfe",
                                 background: "#eff6ff",
-                                color: "#2563eb",
+                                color: "#14b8a6",
                                 fontSize: "12px",
                                 fontWeight: "500",
                                 cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
                               }}
                             >
-                              Edit
+                              <FaPen /> Edit
                             </button>
                             <button
                               onClick={() => deleteDoctor(d.doctor_id)}
@@ -460,9 +481,12 @@ export default function Doctors() {
                                 fontSize: "12px",
                                 fontWeight: "500",
                                 cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
                               }}
                             >
-                              Delete
+                              <FaTrash /> Delete
                             </button>
                           </div>
                         </td>

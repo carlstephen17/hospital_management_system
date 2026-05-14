@@ -32,6 +32,20 @@ export default function EditPatientModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  const medicalConditions = [
+    "Hypertension",
+    "Diabetes",
+    "Asthma",
+    "Heart Disease",
+    "Cancer",
+    "Arthritis",
+    "Depression",
+    "Anxiety",
+    "Migraine",
+    "Allergies",
+    "Other",
+  ];
+
   // LOAD PATIENT DATA
   useEffect(() => {
     if (!patient) return;
@@ -274,7 +288,7 @@ export default function EditPatientModal({
                 label="Medical Condition"
                 required
               >
-                <input
+                <select
                   className="pm-input"
                   style={ms.input}
                   value={
@@ -283,8 +297,19 @@ export default function EditPatientModal({
                   onChange={set(
                     "medical_condition",
                   )}
-                  placeholder="e.g. Hypertension"
-                />
+                >
+                  <option value="">
+                    Select condition
+                  </option>
+                  {medicalConditions.map((c) => (
+                    <option
+                      key={c}
+                      value={c}
+                    >
+                      {c}
+                    </option>
+                  ))}
+                </select>
               </Field>
 
               <Field

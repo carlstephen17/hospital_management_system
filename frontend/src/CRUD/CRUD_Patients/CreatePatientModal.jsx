@@ -27,6 +27,20 @@ export default function CreatePatientModal({ onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  const medicalConditions = [
+    "Hypertension",
+    "Diabetes",
+    "Asthma",
+    "Heart Disease",
+    "Cancer",
+    "Arthritis",
+    "Depression",
+    "Anxiety",
+    "Migraine",
+    "Allergies",
+    "Other",
+  ];
+
   const set = (key) => (e) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
@@ -38,6 +52,12 @@ export default function CreatePatientModal({ onClose, onSaved }) {
       !blood_type || !medical_condition.trim() || !status || !address.trim()
     ) {
       setError("All fields are required.");
+      return;
+    }
+
+    const phoneRegex = /^09\d{9}$/;
+    if (!phoneRegex.test(phone)) {
+      setError("Phone number must start with '09' and be exactly 11 digits.");
       return;
     }
 
@@ -139,13 +159,12 @@ export default function CreatePatientModal({ onClose, onSaved }) {
             {/* Row 3 — Medical Condition + Status */}
             <div style={ms.row}>
               <Field label="Medical Condition" required>
-                <input
-                  className="pm-input"
-                  style={ms.input}
-                  value={form.medical_condition}
-                  onChange={set("medical_condition")}
-                  placeholder="e.g. Hypertension"
-                />
+                <select className="pm-input" style={ms.input} value={form.medical_condition} onChange={set("medical_condition")}>
+                  <option value="">Select condition</option>
+                  {medicalConditions.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
               </Field>
               <Field label="Status" required>
                 <select className="pm-input" style={ms.input} value={form.status} onChange={set("status")}>

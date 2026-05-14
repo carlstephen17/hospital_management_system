@@ -114,6 +114,18 @@ export default function CreateDoctorModal({ onClose, onSaved }) {
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("Invalid email format.");
+      return;
+    }
+
+    const phoneRegex = /^09\d{9}$/;
+    if (!phoneRegex.test(phone)) {
+      setError("Phone number must start with '09' and be exactly 11 digits.");
+      return;
+    }
+
     setSaving(true);
     setError("");
 

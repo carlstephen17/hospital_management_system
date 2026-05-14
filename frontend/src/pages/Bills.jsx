@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { URL } from "../API";
 import { useNavigate, useLocation } from "react-router-dom";
 import { sidebarStyles, navItems } from "../components/sideBar";
+import { FaEye, FaPen, FaTrash } from "react-icons/fa";
 import CreateBillModal from "../CRUD/CRUD_Bills/CreateBillModal";
 import ReadBillModal from "../CRUD/CRUD_Bills/ReadBillModal";
 import EditBillModal from "../CRUD/CRUD_Bills/EditBillModal";
@@ -12,6 +13,8 @@ function Bills() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(new Set());
+  const [sortBy, setSortBy] = useState("bill_id");
+  const [sortOrder, setSortOrder] = useState("asc");
 
   const [showAdd, setShowAdd] = useState(false);
   const [readBill, setReadBill] = useState(null);
@@ -94,7 +97,7 @@ function Bills() {
   function toggleAll(e) {
     setSelected(
       e.target.checked
-        ? new Set(filtered.map((b) => b.bill_id))
+        ? new Set(sorted.map((b) => b.bill_id))
         : new Set(),
     );
   }
@@ -105,6 +108,22 @@ function Bills() {
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
+
+  const sorted = [...filtered].sort((a, b) => {
+    let aVal, bVal;
+    if (sortBy === "bill_id") {
+      aVal = a.bill_id;
+      bVal = b.bill_id;
+    } else if (sortBy === "amount") {
+      aVal = parseFloat(a.amount);
+      bVal = parseFloat(b.amount);
+    }
+    if (sortOrder === "asc") {
+      return aVal > bVal ? 1 : -1;
+    } else {
+      return aVal < bVal ? 1 : -1;
+    }
+  });
 
   const TH = {
     padding: "14px 18px",
@@ -313,7 +332,7 @@ function Bills() {
             </span>
 
             <span style={{ fontSize: "12px", color: "#64748b" }}>
-              {filtered.length} record
+              {sorted.length} record
               {filtered.length !== 1 ? "s" : ""}
             </span>
           </div>
@@ -389,7 +408,7 @@ function Bills() {
                         onChange={toggleAll}
                         checked={
                           filtered.length > 0 &&
-                          filtered.every((b) =>
+                          sorted.every((b) =>
                             selected.has(b.bill_id),
                           )
                         }
@@ -400,12 +419,34 @@ function Bills() {
                       />
                     </th>
 
-                    <th style={{ ...TH, width: "80px" }}>ID</th>
+                    <th
+                      style={{ ...TH, width: "80px", cursor: "pointer" }}
+                      onClick={() => {
+                        if (sortBy === "bill_id") {
+                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                        } else {
+                          setSortBy("bill_id");
+                          setSortOrder("asc");
+                        }
+                      }}
+                    >
+                      ID {sortBy === "bill_id" && (sortOrder === "asc" ? "↑" : "↓")}
+                    </th>
                     <th style={{ ...TH, width: "18%" }}>
                       Patient ID
                     </th>
-                    <th style={{ ...TH, width: "18%" }}>
-                      Amount
+                    <th
+                      style={{ ...TH, width: "18%", cursor: "pointer" }}
+                      onClick={() => {
+                        if (sortBy === "amount") {
+                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                        } else {
+                          setSortBy("amount");
+                          setSortOrder("asc");
+                        }
+                      }}
+                    >
+                      Amount {sortBy === "amount" && (sortOrder === "asc" ? "↑" : "↓")}
                     </th>
                     <th style={{ ...TH, width: "12%" }}>
                       Status
@@ -420,7 +461,7 @@ function Bills() {
                 </thead>
 
                 <tbody>
-                  {filtered.length === 0 ? (
+                  {sorted.length === 0 ? (
                     <tr>
                       <td
                         colSpan={7}
@@ -434,7 +475,7 @@ function Bills() {
                       </td>
                     </tr>
                   ) : (
-                    filtered.map((b) => (
+                    sorted.map((b) => (
                       <tr
                         key={b.bill_id}
                         style={{
@@ -504,13 +545,16 @@ function Bills() {
                                 borderRadius: "7px",
                                 border: "1px solid #dbe2ea",
                                 background: "#fff",
-                                color: "#334155",
+                                color: "#3b82f6",
                                 fontSize: "12px",
                                 fontWeight: "500",
                                 cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
                               }}
                             >
-                              View
+                              <FaEye /> View
                             </button>
 
                             <button
@@ -520,13 +564,16 @@ function Bills() {
                                 borderRadius: "7px",
                                 border: "1px solid #bfdbfe",
                                 background: "#eff6ff",
-                                color: "#2563eb",
+                                color: "#14b8a6",
                                 fontSize: "12px",
                                 fontWeight: "500",
                                 cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
                               }}
                             >
-                              Edit
+                              <FaPen /> Edit
                             </button>
 
                             <button
@@ -542,9 +589,12 @@ function Bills() {
                                 fontSize: "12px",
                                 fontWeight: "500",
                                 cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
                               }}
                             >
-                              Delete
+                              <FaTrash /> Delete
                             </button>
                           </div>
                         </td>

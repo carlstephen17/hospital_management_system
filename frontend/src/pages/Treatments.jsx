@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { URL } from "../API";
 import { useNavigate, useLocation } from "react-router-dom";
 import { sidebarStyles, navItems } from "../components/SideBar";
+import { FaEye, FaPen, FaTrash } from "react-icons/fa";
 import CreateTreatmentModal from "../CRUD/CRUD_Treatments/CreateTreatmentModal";
 import EditTreatmentModal from "../CRUD/CRUD_Treatments/EditTreatmentModal";
 import ReadTreatmentModal from "../CRUD/CRUD_Treatments/ReadTreatmentModal";
@@ -32,6 +33,8 @@ export default function Treatments() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(new Set());
+  const [sortBy, setSortBy] = useState("treatment_id");
+  const [sortOrder, setSortOrder] = useState("asc");
 
   const [showAdd, setShowAdd] = useState(false);
   const [viewTreatment, setViewTreatment] = useState(null);
@@ -95,7 +98,7 @@ export default function Treatments() {
 
   function toggleAll(e) {
     setSelected(
-      e.target.checked ? new Set(filtered.map((t) => t.treatment_id)) : new Set()
+      e.target.checked ? new Set(sorted.map((t) => t.treatment_id)) : new Set(),
     );
   }
 
@@ -109,6 +112,22 @@ export default function Treatments() {
       .toLowerCase()
       .includes(search.toLowerCase())
   );
+
+  const sorted = [...filtered].sort((a, b) => {
+    let aVal, bVal;
+    if (sortBy === "treatment_id") {
+      aVal = a.treatment_id;
+      bVal = b.treatment_id;
+    } else if (sortBy === "treatment_name") {
+      aVal = a.treatment_name.toLowerCase();
+      bVal = b.treatment_name.toLowerCase();
+    }
+    if (sortOrder === "asc") {
+      return aVal > bVal ? 1 : -1;
+    } else {
+      return aVal < bVal ? 1 : -1;
+    }
+  });
 
   return (
     <div
@@ -284,7 +303,7 @@ export default function Treatments() {
               All Treatments
             </span>
             <span style={{ fontSize: "12px", color: "#64748b" }}>
-              {filtered.length} record{filtered.length !== 1 ? "s" : ""}
+              {sorted.length} record{sorted.length !== 1 ? "s" : ""}
             </span>
           </div>
 
@@ -340,13 +359,37 @@ export default function Treatments() {
                         onChange={toggleAll}
                         checked={
                           filtered.length > 0 &&
-                          filtered.every((t) => selected.has(t.treatment_id))
+                          sorted.every((t) => selected.has(t.treatment_id))
                         }
                         style={{ cursor: "pointer", accentColor: "#2563eb" }}
                       />
                     </th>
-                    <th style={{ ...TH, width: "70px" }}>ID</th>
-                    <th style={{ ...TH, width: "22%" }}>Treatment Name</th>
+                    <th
+                      style={{ ...TH, width: "70px", cursor: "pointer" }}
+                      onClick={() => {
+                        if (sortBy === "treatment_id") {
+                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                        } else {
+                          setSortBy("treatment_id");
+                          setSortOrder("asc");
+                        }
+                      }}
+                    >
+                      ID {sortBy === "treatment_id" && (sortOrder === "asc" ? "↑" : "↓")}
+                    </th>
+                    <th
+                      style={{ ...TH, width: "22%", cursor: "pointer" }}
+                      onClick={() => {
+                        if (sortBy === "treatment_name") {
+                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                        } else {
+                          setSortBy("treatment_name");
+                          setSortOrder("asc");
+                        }
+                      }}
+                    >
+                      Treatment Name {sortBy === "treatment_name" && (sortOrder === "asc" ? "↑" : "↓")}
+                    </th>
                     <th style={{ ...TH, width: "28%" }}>Description</th>
                     <th style={{ ...TH, width: "12%" }}>Cost</th>
                     <th style={{ ...TH, width: "18%" }}>Department</th>
@@ -354,7 +397,7 @@ export default function Treatments() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.length === 0 ? (
+                  {sorted.length === 0 ? (
                     <tr>
                       <td
                         colSpan={7}
@@ -364,7 +407,7 @@ export default function Treatments() {
                       </td>
                     </tr>
                   ) : (
-                    filtered.map((t) => (
+                    sorted.map((t) => (
                       <tr
                         key={t.treatment_id}
                         style={{
@@ -418,13 +461,16 @@ export default function Treatments() {
                                 borderRadius: "7px",
                                 border: "1px solid #dbe2ea",
                                 background: "#fff",
-                                color: "#334155",
+                                color: "#3b82f6",
                                 fontSize: "12px",
                                 fontWeight: "500",
                                 cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
                               }}
                             >
-                              View
+                              <FaEye /> View
                             </button>
                             <button
                               onClick={() => setEditTreatment(t)}
@@ -433,13 +479,16 @@ export default function Treatments() {
                                 borderRadius: "7px",
                                 border: "1px solid #bfdbfe",
                                 background: "#eff6ff",
-                                color: "#2563eb",
+                                color: "#14b8a6",
                                 fontSize: "12px",
                                 fontWeight: "500",
                                 cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
                               }}
                             >
-                              Edit
+                              <FaPen /> Edit
                             </button>
                             <button
                               onClick={() => deleteTreatment(t.treatment_id)}
@@ -452,9 +501,12 @@ export default function Treatments() {
                                 fontSize: "12px",
                                 fontWeight: "500",
                                 cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
                               }}
                             >
-                              Delete
+                              <FaTrash /> Delete
                             </button>
                           </div>
                         </td>

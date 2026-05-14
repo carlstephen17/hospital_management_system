@@ -8,16 +8,32 @@ function CreateTreatmentModal({ onClose, onSaved }) {
   const [error, setError] = useState("");
   const [form, setForm] = useState({
     treatment_name: "",
-    description: "",
     cost: "",
     department_id: "",
   });
+
+  const treatmentOptions = [
+    { name: "Consultation", cost: 500 },
+    { name: "Blood Test", cost: 200 },
+    { name: "X-Ray", cost: 800 },
+    { name: "Surgery", cost: 5000 },
+    { name: "Therapy", cost: 300 },
+    { name: "Vaccination", cost: 150 },
+    { name: "Check-up", cost: 250 },
+  ];
 
   useEffect(() => {
     fetch(`${URL}/api/departments`)
       .then((r) => r.json())
       .then((d) => setDepartments(Array.isArray(d) ? d : []));
   }, []);
+
+  useEffect(() => {
+    const selected = treatmentOptions.find(t => t.name === form.treatment_name);
+    if (selected) {
+      setForm(prev => ({ ...prev, cost: selected.cost.toString() }));
+    }
+  }, [form.treatment_name]);
 
   const handleChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -36,9 +52,7 @@ function CreateTreatmentModal({ onClose, onSaved }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           treatment_name: form.treatment_name,
-          description: form.description || null,
           cost: form.cost ? parseFloat(form.cost) : null,
-          department_id: form.department_id || null,
         }),
       });
       if (!res.ok) throw new Error("Failed to create treatment.");
@@ -68,13 +82,17 @@ function CreateTreatmentModal({ onClose, onSaved }) {
           <div style={MS.grid2}>
             <div style={MS.formGroup}>
               <label style={MS.label}>Treatment Name *</label>
-              <input
+              <select
                 style={MS.input}
                 name="treatment_name"
                 value={form.treatment_name}
                 onChange={handleChange}
-                placeholder="e.g. Blood Test"
-              />
+              >
+                <option value="">Select treatment</option>
+                {treatmentOptions.map(t => (
+                  <option key={t.name} value={t.name}>{t.name}</option>
+                ))}
+              </select>
             </div>
             <div style={MS.formGroup}>
               <label style={MS.label}>Cost (₱)</label>
@@ -85,8 +103,7 @@ function CreateTreatmentModal({ onClose, onSaved }) {
                 style={MS.input}
                 name="cost"
                 value={form.cost}
-                onChange={handleChange}
-                placeholder="0.00"
+                readOnly
               />
             </div>
           </div>

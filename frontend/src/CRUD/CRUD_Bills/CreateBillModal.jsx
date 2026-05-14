@@ -22,7 +22,7 @@ export default function CreateBillModal({ onClose, onSaved }) {
     patient_id: "",
     treatment_id: "",
     amount: "",
-    bill_date: "",
+    bill_date: new Date().toISOString().slice(0,16),
     status: "Unpaid",
     blood_type: "",
   });

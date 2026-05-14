@@ -343,14 +343,6 @@ function Home() {
             </button>
           ))}
         </nav>
-
-        <div style={sidebarStyles.sidebarFooter}>
-          <p style={sidebarStyles.footerText}>
-            Hospital Management
-            <br />
-            System v1.0
-          </p>
-        </div>
       </aside>
 
       <main style={mainStyles.main}>

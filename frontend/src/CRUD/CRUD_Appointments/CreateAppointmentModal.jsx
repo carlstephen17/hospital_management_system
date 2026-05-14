@@ -19,7 +19,7 @@ export default function CreateAppointmentModal({ onClose, onSaved }) {
     patient_id: "",
     doctor_id: "",
     appointment_type: "",
-    appointment_date: "",
+    appointment_date: new Date().toISOString().slice(0,16),
     status: "Admitted",
   });
 
@@ -87,6 +87,7 @@ export default function CreateAppointmentModal({ onClose, onSaved }) {
 
       onSaved?.();
       onClose();
+      
     } catch (err) {
       setError(err.message);
     } finally {

@@ -25,6 +25,9 @@ const db = mysql.createConnection({
 });
 const dbPromise = db.promise();
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const phoneRegex = /^09\d{9}$/;
+
 db.connect((err) => {
   if (err) {
     console.error("Error connecting to MySQL:", err);
@@ -80,6 +83,10 @@ app.post("/api/patients", (req, res) => {
     });
   }
 
+  if (!phoneRegex.test(phone)) {
+    return res.status(400).json({ error: "Phone number must start with '09' and be exactly 11 digits" });
+  }
+
   const sql = `
     INSERT INTO patients
     (
@@ -132,6 +139,10 @@ app.put("/api/patients/:id", (req, res) => {
     status,
   } = req.body;
 
+  if (phone !== undefined && phone !== null && !phoneRegex.test(phone)) {
+    return res.status(400).json({ error: "Phone number must start with '09' and be exactly 11 digits" });
+  }
+
   let query = "UPDATE patients SET ";
   let params = [];
 
@@ -139,9 +150,8 @@ app.put("/api/patients/:id", (req, res) => {
     query += "patient_name = ?, ";
     params.push(patient_name);
   }
-  if (phone !== undefined) {
-    query += "phone = ?, ";
-    params.push(phone || null);
+  if (phone !== undefined && phone !== null && !phoneRegex.test(phone)) {
+    return res.status(400).json({ error: "Phone number must start with '09' and be exactly 11 digits" });
   }
   if (gender !== undefined) {
     query += "gender = ?, ";
@@ -198,13 +208,13 @@ app.delete("/api/patients/:id", (req, res) => {
 });
 
 app.delete("/api/deleteAll", (req, res) => {
-  db.query("DELETE FROM patient_treatments", (err) => {
+  db.query("TRUNCATE TABLE patient_treatments", (err) => {
     if (err) return res.status(500).json({ error: err.message });
-    db.query("DELETE FROM appointments", (err) => {
+    db.query("TRUNCATE TABLE appointments", (err) => {
       if (err) return res.status(500).json({ error: err.message });
-      db.query("DELETE FROM bills", (err) => {
+      db.query("TRUNCATE TABLE bills", (err) => {
         if (err) return res.status(500).json({ error: err.message });
-        db.query("DELETE FROM patients", (err) => {
+        db.query("TRUNCATE TABLE patients", (err) => {
           if (err) return res.status(500).json({ error: err.message });
           res.json({
             message: "All patients and related records deleted successfully",
@@ -256,6 +266,19 @@ app.get("/api/doctors/:id", (req, res) => {
 app.post("/api/doctors", (req, res) => {
   const { doctor_name, phone, doctor_specialty, department_id, email } =
     req.body;
+
+  if (!doctor_name || !phone || !doctor_specialty || !department_id || !email) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  if (!phoneRegex.test(phone)) {
+    return res.status(400).json({ error: "Phone number must start with '09' and be exactly 11 digits" });
+  }
+
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: "Invalid email format" });
+  }
+
   db.query(
     "INSERT INTO doctors (doctor_name, phone, doctor_specialty, department_id, email) VALUES (?, ?, ?, ?, ?)",
     [doctor_name, phone, doctor_specialty, department_id, email],
@@ -270,6 +293,15 @@ app.put("/api/doctors/:id", (req, res) => {
   const { id } = req.params;
   const { doctor_name, phone, doctor_specialty, department_id, email } =
     req.body;
+
+  if (phone !== undefined && phone !== null && !phoneRegex.test(phone)) {
+    return res.status(400).json({ error: "Phone number must start with '09' and be exactly 11 digits" });
+  }
+
+  if (email !== undefined && email !== null && !emailRegex.test(email)) {
+    return res.status(400).json({ error: "Invalid email format" });
+  }
+
   db.query(
     "UPDATE doctors SET doctor_name = ?, phone = ?, doctor_specialty = ?, department_id = ?, email = ? WHERE doctor_id = ?",
     [doctor_name, phone, doctor_specialty, department_id, email, id],
@@ -285,6 +317,13 @@ app.delete("/api/doctors/:id", (req, res) => {
   db.query("DELETE FROM doctors WHERE doctor_id = ?", [id], (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: "Doctor deleted successfully" });
+  });
+});
+
+app.delete("/api/deleteAllDoctors", (req, res) => {
+  db.query("TRUNCATE TABLE doctors", (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: "All doctors deleted successfully" });
   });
 });
 
@@ -411,6 +450,16 @@ app.delete("/api/treatments/:id", (req, res) => {
   });
 });
 
+app.delete("/api/deleteAllTreatments", (req, res) => {
+  db.query("TRUNCATE TABLE patient_treatments", (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    db.query("TRUNCATE TABLE treatments", (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ message: "All treatments and related records deleted successfully" });
+    });
+  });
+});
+
 // ------------------ PATIENT_TREATMENTS CRUD ------------------ //
 app.get("/api/patient_treatments", (req, res) => {
   db.query("SELECT * FROM patient_treatments", (err, results) => {
@@ -529,6 +578,13 @@ app.delete("/api/appointments/:id", (req, res) => {
   });
 });
 
+app.delete("/api/deleteAllAppointments", (req, res) => {
+  db.query("TRUNCATE TABLE appointments", (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: "All appointments deleted successfully" });
+  });
+});
+
 // ------------------ BILLS CRUD ------------------ //
 app.get("/api/bills", (req, res) => {
   db.query("SELECT * FROM bills", (err, results) => {
@@ -537,24 +593,40 @@ app.get("/api/bills", (req, res) => {
   });
 });
 
-app.post("/api/bills", (req, res) => {
+app.post("/api/bills", async (req, res) => {
   const { patient_id, treatment_id, amount, bill_date, status } = req.body;
-  const billStatus = status || "unpaid";
-  db.query(
-    "INSERT INTO bills (patient_id, treatment_id, amount, bill_date, status) VALUES (?, ?, ?, ?, ?)",
-    [patient_id, treatment_id, amount, bill_date, billStatus],
-    (err, result) => {
-      if (err) return res.status(500).json({ error: err.message });
-      res.status(201).json({
-        id: result.insertId,
-        patient_id,
-        treatment_id,
-        amount,
-        bill_date,
-        status: billStatus,
-      });
-    },
-  );
+
+  if (!patient_id || !treatment_id || !amount || !bill_date) {
+    return res.status(400).json({ error: "Patient ID, Treatment ID, Amount, and Bill Date are required" });
+  }
+
+  try {
+    const [treatmentRows] = await dbPromise.query("SELECT cost FROM treatments WHERE treatment_id = ?", [treatment_id]);
+    if (treatmentRows.length === 0) {
+      return res.status(400).json({ error: "Invalid treatment ID" });
+    }
+    const treatmentCost = treatmentRows[0].cost;
+    let billStatus = status;
+    if (!billStatus) {
+      billStatus = amount < treatmentCost ? "Pending" : "Paid";
+    }
+
+    const [result] = await dbPromise.query(
+      "INSERT INTO bills (patient_id, treatment_id, amount, bill_date, status) VALUES (?, ?, ?, ?, ?)",
+      [patient_id, treatment_id, amount, bill_date, billStatus]
+    );
+
+    res.status(201).json({
+      id: result.insertId,
+      patient_id,
+      treatment_id,
+      amount,
+      bill_date,
+      status: billStatus,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.put("/api/bills/:id", (req, res) => {
@@ -600,6 +672,13 @@ app.delete("/api/bills/:id", (req, res) => {
   db.query("DELETE FROM bills WHERE bill_id = ?", [id], (err) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: "Bill deleted successfully" });
+  });
+});
+
+app.delete("/api/deleteAllBills", (req, res) => {
+  db.query("TRUNCATE TABLE bills", (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: "All bills deleted successfully" });
   });
 });
 

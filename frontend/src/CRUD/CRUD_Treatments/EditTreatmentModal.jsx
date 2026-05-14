@@ -9,20 +9,25 @@ function EditTreatmentModal({ treatment, onClose, onSaved }) {
   const [departmentOptions, setDepartmentOptions] = useState([]);
   const [form, setForm] = useState({
     treatment_name: treatment?.treatment_name || "",
-    description: treatment?.description || "",
     cost: treatment?.cost || "",
     department_id: treatment?.department_id || "",
   });
 
+  const predefinedOptions = [
+    { name: "Consultation", cost: 500 },
+    { name: "Blood Test", cost: 200 },
+    { name: "X-Ray", cost: 800 },
+    { name: "Surgery", cost: 5000 },
+    { name: "Therapy", cost: 300 },
+    { name: "Vaccination", cost: 150 },
+    { name: "Check-up", cost: 250 },
+  ];
+
   useEffect(() => {
     async function fetchOptions() {
       try {
-        const [tRes, dRes] = await Promise.all([
-          fetch(`${URL}/api/treatments`),
-          fetch(`${URL}/api/departments`)
-        ]);
-        const [tData, dData] = await Promise.all([tRes.json(), dRes.json()]);
-        setTreatmentOptions(Array.isArray(tData) ? tData : []);
+        const dRes = await fetch(`${URL}/api/departments`);
+        const dData = await dRes.json();
         setDepartmentOptions(Array.isArray(dData) ? dData : []);
       } catch (err) {
         console.error(err);
@@ -30,6 +35,13 @@ function EditTreatmentModal({ treatment, onClose, onSaved }) {
     }
     fetchOptions();
   }, []);
+
+  useEffect(() => {
+    const selected = predefinedOptions.find(t => t.name === form.treatment_name);
+    if (selected) {
+      setForm(prev => ({ ...prev, cost: selected.cost.toString() }));
+    }
+  }, [form.treatment_name]);
 
   const handleChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -48,9 +60,7 @@ function EditTreatmentModal({ treatment, onClose, onSaved }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           treatment_name: form.treatment_name,
-          description: form.description || null,
           cost: form.cost ? parseFloat(form.cost) : null,
-          department_id: form.department_id || null,
         }),
       });
       if (!res.ok) throw new Error("Failed to update treatment.");
@@ -86,28 +96,10 @@ function EditTreatmentModal({ treatment, onClose, onSaved }) {
               value={form.treatment_name}
               onChange={handleChange}
             >
-              <option value="">Select Treatment</option>
-              {treatmentOptions.map((t) => (
-                <option key={t.treatment_id} value={t.treatment_name}>
-                  {t.treatment_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Description */}
-          <div style={MS.formGroup}>
-            <label style={MS.label}>Description</label>
-            <select
-              style={MS.select}
-              name="description"
-              value={form.description}
-              onChange={handleChange}
-            >
-              <option value="">Select Description</option>
-              {treatmentOptions.map((t) => (
-                <option key={t.treatment_id} value={t.description || ""}>
-                  {t.description || "—"}
+              <option value="">Select treatment</option>
+              {predefinedOptions.map((t) => (
+                <option key={t.name} value={t.name}>
+                  {t.name}
                 </option>
               ))}
             </select>
@@ -123,8 +115,7 @@ function EditTreatmentModal({ treatment, onClose, onSaved }) {
               style={MS.input}
               name="cost"
               value={form.cost}
-              onChange={handleChange}
-              placeholder="0.00"
+              readOnly
             />
           </div>
 

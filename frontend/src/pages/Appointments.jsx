@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { URL } from "../API";
 import { useNavigate, useLocation } from "react-router-dom";
 import { sidebarStyles, navItems } from "../components/sideBar";
+import { FaEye, FaPen, FaTrash } from "react-icons/fa";
 
 import CreateAppointmentModal from "../CRUD/CRUD_Appointments/CreateAppointmentModal";
 import ReadAppointmentModal from "../CRUD/CRUD_Appointments/ReadAppointmentModal";
@@ -47,6 +48,8 @@ function Appointments() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(new Set());
+  const [sortBy, setSortBy] = useState("appointment_id");
+  const [sortOrder, setSortOrder] = useState("asc");
 
   const [showAdd, setShowAdd] = useState(false);
   const [readAppointment, setReadAppointment] = useState(null);
@@ -102,7 +105,7 @@ function Appointments() {
   function toggleAll(e) {
     setSelected(
       e.target.checked
-        ? new Set(filtered.map((a) => a.appointment_id))
+        ? new Set(sorted.map((a) => a.appointment_id))
         : new Set(),
     );
   }
@@ -148,6 +151,25 @@ function Appointments() {
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
+
+  const sorted = [...filtered].sort((a, b) => {
+    let aVal, bVal;
+    if (sortBy === "appointment_id") {
+      aVal = a.appointment_id;
+      bVal = b.appointment_id;
+    } else if (sortBy === "appointment_date") {
+      aVal = new Date(a.appointment_date);
+      bVal = new Date(b.appointment_date);
+    } else {
+      aVal = getPatientName(a.patient_id).toLowerCase();
+      bVal = getDoctorName(b.doctor_id).toLowerCase();
+    }
+    if (sortOrder === "asc") {
+      return aVal > bVal ? 1 : -1;
+    } else {
+      return aVal < bVal ? 1 : -1;
+    }
+  });
 
   return (
     <div
@@ -291,7 +313,7 @@ function Appointments() {
           >
             <span style={{ fontWeight: 600 }}>All Appointments</span>
             <span style={{ fontSize: "12px", color: "#64748b" }}>
-              {filtered.length} records
+              {sorted.length} records
             </span>
           </div>
 
@@ -315,13 +337,37 @@ function Appointments() {
                         type="checkbox"
                         onChange={toggleAll}
                         checked={
-                          filtered.length > 0 &&
-                          filtered.every((a) => selected.has(a.appointment_id))
+                          sorted.length > 0 &&
+                          sorted.every((a) => selected.has(a.appointment_id))
                         }
                       />
                     </th>
-                    <th style={TH}>ID</th>
-                    <th style={TH}>Patient</th>
+                    <th
+                      style={{ ...TH, cursor: "pointer" }}
+                      onClick={() => {
+                        if (sortBy === "appointment_id") {
+                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                        } else {
+                          setSortBy("appointment_id");
+                          setSortOrder("asc");
+                        }
+                      }}
+                    >
+                      ID {sortBy === "appointment_id" && (sortOrder === "asc" ? "↑" : "↓")}
+                    </th>
+                    <th
+                      style={{ ...TH, cursor: "pointer" }}
+                      onClick={() => {
+                        if (sortBy === "patient_name") {
+                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                        } else {
+                          setSortBy("patient_name");
+                          setSortOrder("asc");
+                        }
+                      }}
+                    >
+                      Patient {sortBy === "patient_name" && (sortOrder === "asc" ? "↑" : "↓")}
+                    </th>
                     <th style={TH}>Doctor</th>
                     <th style={TH}>Date</th>
                     <th style={TH}>Status</th>
@@ -330,7 +376,7 @@ function Appointments() {
                 </thead>
 
                 <tbody>
-                  {filtered.map((a) => (
+                  {sorted.map((a) => (
                     <tr key={a.appointment_id}>
                       <td style={{ ...TD, textAlign: "center" }}>
                         <input
@@ -375,13 +421,16 @@ function Appointments() {
                               borderRadius: "7px",
                               border: "1px solid #dbe2ea",
                               background: "#fff",
-                              color: "#334155",
+                              color: "#3b82f6",
                               fontSize: "12px",
                               fontWeight: "500",
                               cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
                             }}
                           >
-                            View
+                            <FaEye /> View
                           </button>
                           <button
                             onClick={() => setEditAppointment(a)}
@@ -390,13 +439,16 @@ function Appointments() {
                               borderRadius: "7px",
                               border: "1px solid #bfdbfe",
                               background: "#eff6ff",
-                              color: "#2563eb",
+                              color: "#14b8a6",
                               fontSize: "12px",
                               fontWeight: "500",
                               cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
                             }}
                           >
-                            Edit
+                            <FaPen /> Edit
                           </button>
                           <button
                             onClick={() => deleteAppointment(a.appointment_id)}
@@ -409,9 +461,12 @@ function Appointments() {
                               fontSize: "12px",
                               fontWeight: "500",
                               cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
                             }}
                           >
-                            Delete
+                            <FaTrash /> Delete
                           </button>
                         </div>
                       </td>

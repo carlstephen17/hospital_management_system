@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-"""analytics.py
-
-Provides database analytics summaries for the hospital management system.
-This script can be used to generate statistical dashboards or export
-summary metrics for further visualization.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -16,13 +8,13 @@ from pathlib import Path
 
 try:
     from dotenv import load_dotenv
-except ImportError:  # pragma: no cover
+except ImportError:  
     load_dotenv = None
 
 try:
     import mysql.connector
     from mysql.connector import Error
-except ImportError:  # pragma: no cover
+except ImportError:  
     mysql = None
     Error = Exception
 
